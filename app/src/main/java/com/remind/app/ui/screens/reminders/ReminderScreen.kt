@@ -171,7 +171,7 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
                             .clip(RoundedCornerShape(16.dp))
                             .background(
                                 when {
-                                    isSelected -> MaterialTheme.colorScheme.onBackground
+                                    isSelected -> if (MaterialTheme.colorScheme.background == Cream) CharcoalDark else MaterialTheme.colorScheme.onBackground
                                     isToday    -> PastelBlueLight
                                     else       -> MaterialTheme.colorScheme.surfaceVariant
                                 }
@@ -184,8 +184,9 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
                             style = MaterialTheme.typography.labelSmall,
                             fontSize = 10.sp,
                             color = when {
-                                isSelected || isToday -> CharcoalDark // Dark text on light blue/white backgrounds
-                                else -> Cream // Light text on dark/surface backgrounds
+                                isSelected -> if (MaterialTheme.colorScheme.background == Cream) Cream else CharcoalDark
+                                isToday    -> CharcoalDark
+                                else -> if (MaterialTheme.colorScheme.background == Cream) TextSecondary else Cream
                             }
                         )
                         Spacer(modifier = Modifier.height(4.dp))
@@ -195,8 +196,9 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
                                 fontWeight = if (isSelected || isToday) FontWeight.Bold else FontWeight.Normal
                             ),
                             color = when {
-                                isSelected || isToday -> CharcoalDark // Dark text on light blue/white backgrounds
-                                else -> Cream // Light text on dark/surface backgrounds
+                                isSelected -> if (MaterialTheme.colorScheme.background == Cream) Cream else CharcoalDark
+                                isToday    -> CharcoalDark
+                                else -> if (MaterialTheme.colorScheme.background == Cream) TextPrimary else Cream
                             }
                         )
                     }
