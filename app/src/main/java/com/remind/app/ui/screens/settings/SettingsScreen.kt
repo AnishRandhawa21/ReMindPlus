@@ -5,8 +5,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,11 +37,20 @@ fun SettingsScreen(
 
         Button(
             onClick = { viewModel.signOut() },
+            enabled = !viewModel.isLoading,
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.error
             )
         ) {
-            Text("Logout")
+            if (viewModel.isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = MaterialTheme.colorScheme.onError,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text("Logout")
+            }
         }
     }
 }

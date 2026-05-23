@@ -6,6 +6,7 @@ localProperties.load(project.rootProject.file("local.properties").inputStream())
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -100,4 +101,13 @@ dependencies {
     implementation(libs.supabase.compose.auth)
 
     implementation("io.ktor:ktor-client-android:3.0.3")
+
+    //RoomDB
+    implementation("androidx.room:room-runtime:2.7.2")
+    implementation("androidx.room:room-ktx:2.7.2")
+
+    ksp("androidx.room:room-compiler:2.7.2")
+
+    //LifeCycle
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.2")
 }
