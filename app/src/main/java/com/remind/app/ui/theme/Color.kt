@@ -2,10 +2,61 @@ package com.remind.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+// ── Light surface & background ────────────────────────────────────────────────
+val Cream          = Color(0xFFFAF7F2)
+val CreamDark      = Color(0xFFF0EBE3)
+val CardWhite      = Color(0xFFFFFFFF)
+val CardCream      = Color(0xFFFDF9F4)
 
-val Purple40 = Color(0xFF6650a4)
+// ── Dark surface & background ─────────────────────────────────────────────────
+val SurfaceDark        = Color(0xFF1C1A18)
+val SurfaceVariantDark = Color(0xFF2C2926)
+val SurfaceCardDark    = Color(0xFF38332E)
+val OnSurfaceDark      = Color(0xFFF0EBE3)
+
+// ── Pastel accents (same in light & dark – they're pale enough) ───────────────
+val PastelYellow      = Color(0xFFF5D76E)
+val PastelYellowLight = Color(0xFFFAE8A0)
+
+val PastelGreen      = Color(0xFFA8C5A0)
+val PastelGreenLight = Color(0xFFD4EAD0)
+
+val PastelBlue      = Color(0xFFAEC6E8)
+val PastelBlueLight = Color(0xFFD6E8F7)
+
+val PastelPink      = Color(0xFFF2A7B8)
+val PastelPinkLight = Color(0xFFFBD9E2)
+
+val PastelLavender      = Color(0xFFD4BBEE)
+val PastelLavenderLight = Color(0xFFECDEF9)
+
+val PastelPeach      = Color(0xFFF7C4A0)
+val PastelPeachLight = Color(0xFFFDE4CC)
+
+// ── Fixed dark tones ──────────────────────────────────────────────────────────
+val CharcoalDark   = Color(0xFF2A2A2A)
+val CharcoalMedium = Color(0xFF4A4A4A)
+
+// ── Text – LIGHT theme ────────────────────────────────────────────────────────
+val TextPrimary   = Color(0xFF1E1E1E)
+val TextSecondary = Color(0xFF7A7A7A)
+val TextTertiary  = Color(0xFFB0B0B0)
+
+// ── Text – DARK theme ─────────────────────────────────────────────────────────
+val TextPrimaryDark   = Color(0xFFF0EBE3)
+val TextSecondaryDark = Color(0xFFB0A898)
+val TextTertiaryDark  = Color(0xFF7A7060)
+
+// ── Status ────────────────────────────────────────────────────────────────────
+val StatusOverdue  = Color(0xFFF5A0A0)
+val StatusToday    = Color(0xFFA8C5A0)
+val StatusTomorrow = Color(0xFFAEC6E8)
+val StatusUpcoming = Color(0xFFD4BBEE)
+
+// ── Legacy aliases (keep for existing references) ─────────────────────────────
+val Purple80     = PastelLavender
+val PurpleGrey80 = Color(0xFFCCC2DC)
+val Pink80       = PastelPink
+val Purple40     = Color(0xFF7C5CBF)
 val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+val Pink40       = PastelPink

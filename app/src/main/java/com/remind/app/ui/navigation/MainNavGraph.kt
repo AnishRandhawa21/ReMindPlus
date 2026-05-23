@@ -15,7 +15,7 @@ import com.remind.app.ui.screens.reminders.ReminderViewModel
 import com.remind.app.ui.screens.reminders.ReminderViewModelFactory
 import com.remind.app.ui.screens.settings.SettingsScreen
 import com.remind.app.ui.screens.stats.StatsScreen
-import com.remindplus.app.ui.screens.reminders.ReminderScreen
+import com.remind.app.ui.screens.reminders.ReminderScreen
 import androidx.compose.ui.platform.LocalContext
 @Composable
 fun MainNavGraph(
