@@ -126,21 +126,22 @@ fun ReminderScreen(
                         selectedReminder = null
                     },
 
-                    onSave = { title, description ->
+                    onSave = { title, description, dueTime ->
 
                         if (selectedReminder == null) {
 
                             viewModel.addReminder(
                                 title = title,
-                                description = description
+                                description = description,
+                                dueTime = dueTime
                             )
-
                         } else {
 
                             viewModel.updateReminder(
                                 reminder = selectedReminder!!,
                                 title = title,
-                                description = description
+                                description = description,
+                                dueTime = dueTime
                             )
                         }
 

@@ -17,7 +17,9 @@ import com.remind.app.data.local.entity.ReminderEntity
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.graphics.Color
-
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 @Composable
 fun ReminderItem(
     reminder: ReminderEntity,
@@ -26,6 +28,13 @@ fun ReminderItem(
     onTogglePinned: () -> Unit,
     onClick: () -> Unit
 ) {
+    val formattedDate = reminder.dueTime?.let {
+
+        SimpleDateFormat(
+            "dd MMM yyyy • hh:mm a",
+            Locale.getDefault()
+        ).format(Date(it))
+    }
 
     Card(
         modifier = Modifier
@@ -78,6 +87,21 @@ fun ReminderItem(
                         Text(
                             text = reminder.description,
 
+                            textDecoration = if (reminder.isCompleted) {
+                                TextDecoration.LineThrough
+                            } else {
+                                null
+                            }
+                        )
+                    }
+
+                    if (formattedDate != null) {
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "Due: $formattedDate",
+                            style = MaterialTheme.typography.bodySmall,
                             textDecoration = if (reminder.isCompleted) {
                                 TextDecoration.LineThrough
                             } else {

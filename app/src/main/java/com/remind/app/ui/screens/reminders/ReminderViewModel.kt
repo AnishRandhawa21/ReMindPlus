@@ -44,7 +44,8 @@ class ReminderViewModel(
 
     fun addReminder(
         title: String,
-        description: String
+        description: String,
+        dueTime: Long?
     ) {
 
         if (title.isBlank()) return
@@ -55,6 +56,7 @@ class ReminderViewModel(
                 ReminderEntity(
                     title = title,
                     description = description,
+                    dueTime = dueTime,
                     isSynced = false
                 )
             )
@@ -76,7 +78,8 @@ class ReminderViewModel(
     fun updateReminder(
         reminder: ReminderEntity,
         title: String,
-        description: String
+        description: String,
+        dueTime: Long?
     ) {
 
         viewModelScope.launch {
@@ -85,6 +88,7 @@ class ReminderViewModel(
                 reminder.copy(
                     title = title,
                     description = description,
+                    dueTime = dueTime,
                     updatedAt = System.currentTimeMillis()
                 )
             )
