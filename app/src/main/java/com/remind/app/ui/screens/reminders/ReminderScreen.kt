@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.remind.app.data.local.entity.ReminderEntity
@@ -91,6 +92,8 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
 
     var showAddDialog   by remember { mutableStateOf(false) }
     var editingReminder by remember { mutableStateOf<ReminderEntity?>(null) }
+    
+    // Track which reminder's menu is open
     var menuReminder    by remember { mutableStateOf<ReminderEntity?>(null) }
 
     val dayChips    = remember { buildDayChips() }
@@ -114,12 +117,11 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
     }
     val groupedTimeline = remember(dayReminders) { groupByTime(dayReminders) }
 
-    // Colour tokens – resolved once here so every child composable stays clean
+    // Colour tokens
     val bgColor        = MaterialTheme.colorScheme.background
     val onBg           = MaterialTheme.colorScheme.onBackground
     val onBgSecondary  = MaterialTheme.colorScheme.onSurfaceVariant
     val dividerColor   = MaterialTheme.colorScheme.outlineVariant
-    val cardSurface    = MaterialTheme.colorScheme.surface
 
     // ── Root: fixed column, only timeline scrolls ─────────────────────────────
     Box(
@@ -218,14 +220,31 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
                         .padding(horizontal = 24.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    quickNotes.forEachIndexed { i, note ->
-                        QuickNoteCard(
-                            reminder       = note,
-                            bgColor        = quickNoteColors[i % quickNoteColors.size],
-                            onLongPress    = { menuReminder = note },
-                            onToggleComplete = { viewModel.toggleReminderCompleted(note) }
-                        )
-                    }
+                        quickNotes.forEachIndexed { i, note ->
+                            Box {
+                                QuickNoteCard(
+                                    reminder = note,
+                                    bgColor = quickNoteColors[i % quickNoteColors.size],
+                                    onLongPress = { menuReminder = note },
+                                    onToggleComplete = { viewModel.toggleReminderCompleted(note) },
+                                    onClick = { editingReminder = note }
+                                )
+
+                                ReminderContextMenu(
+                                    expanded = menuReminder == note,
+                                    onDismiss = { menuReminder = null },
+                                    reminder = note,
+                                    onTogglePin = {
+                                        viewModel.togglePinnedReminder(note)
+                                        menuReminder = null
+                                    },
+                                    onDelete = {
+                                        viewModel.deleteReminder(note)
+                                        menuReminder = null
+                                    }
+                                )
+                            }
+                        }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
             }
@@ -280,7 +299,8 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
                                 TimelineRow(
                                     timeLabel      = timeLabel,
                                     reminders      = timeReminders,
-                                    onLongPress    = { r -> menuReminder = r },
+                                    onTogglePin    = { r -> viewModel.togglePinnedReminder(r) },
+                                    onDelete       = { r -> viewModel.deleteReminder(r) },
                                     onToggleComplete = { r -> viewModel.toggleReminderCompleted(r) },
                                     onClick        = { r -> editingReminder = r }
                                 )
@@ -304,89 +324,6 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
         ) {
             Icon(Icons.Default.Add, contentDescription = "Add Reminder")
         }
-    }
-
-    // ── Long-press context menu ───────────────────────────────────────────────
-    menuReminder?.let { reminder ->
-        AlertDialog(
-            onDismissRequest = { menuReminder = null },
-            containerColor   = MaterialTheme.colorScheme.surface,
-            shape            = RoundedCornerShape(24.dp),
-            title = {
-                Text(
-                    text     = reminder.title,
-                    style    = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color    = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    // Pin / Unpin row
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(
-                                if (reminder.isPinned) PastelBlueLight
-                                else MaterialTheme.colorScheme.surfaceVariant
-                            )
-                            .combinedClickable(onClick = {
-                                viewModel.togglePinnedReminder(reminder)
-                                menuReminder = null
-                            })
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                        verticalAlignment   = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.PushPin,
-                            contentDescription = null,
-                            tint   = if (reminder.isPinned) CharcoalDark else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Text(
-                            text  = if (reminder.isPinned) "Unpin reminder" else "Pin reminder",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                    // Delete row
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(PastelPinkLight)
-                            .combinedClickable(onClick = {
-                                viewModel.deleteReminder(reminder)
-                                menuReminder = null
-                            })
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                        verticalAlignment   = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Delete,
-                            contentDescription = null,
-                            tint     = StatusOverdue,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Text(
-                            text  = "Delete reminder",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = StatusOverdue
-                        )
-                    }
-                }
-            },
-            confirmButton  = {},
-            dismissButton  = {
-                TextButton(onClick = { menuReminder = null }) {
-                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        )
     }
 
     // ── Add dialog ────────────────────────────────────────────────────────────
@@ -422,13 +359,17 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
 private fun TimelineRow(
     timeLabel: String,
     reminders: List<ReminderEntity>,
-    onLongPress: (ReminderEntity) -> Unit,
+    onTogglePin: (ReminderEntity) -> Unit,
+    onDelete: (ReminderEntity) -> Unit,
     onToggleComplete: (ReminderEntity) -> Unit,
     onClick: (ReminderEntity) -> Unit
 ) {
     val onBg          = MaterialTheme.colorScheme.onBackground
     val onBgSecondary = MaterialTheme.colorScheme.onSurfaceVariant
     val divider       = MaterialTheme.colorScheme.outlineVariant
+
+    // Local state for which card in THIS row has its menu open
+    var menuReminder by remember { mutableStateOf<ReminderEntity?>(null) }
 
     Row(
         modifier = Modifier
@@ -488,17 +429,96 @@ private fun TimelineRow(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             reminders.forEachIndexed { i, reminder ->
-                TimelineCard(
-                    reminder         = reminder,
-                    colorIndex       = i,
-                    onLongPress      = { onLongPress(reminder) },
-                    onToggleComplete = { onToggleComplete(reminder) },
-                    onClick          = { onClick(reminder) }
-                )
+                Box {
+                    TimelineCard(
+                        reminder = reminder,
+                        colorIndex = i,
+                        onLongPress = { menuReminder = reminder },
+                        onToggleComplete = { onToggleComplete(reminder) },
+                        onClick = { onClick(reminder) }
+                    )
+
+                    ReminderContextMenu(
+                        expanded = menuReminder == reminder,
+                        onDismiss = { menuReminder = null },
+                        reminder = reminder,
+                        showPin = false, // Pin button removed for timeline reminders
+                        onTogglePin = {
+                            onTogglePin(reminder)
+                            menuReminder = null
+                        },
+                        onDelete = {
+                            onDelete(reminder)
+                            menuReminder = null
+                        }
+                    )
+                }
             }
         }
     }
     Spacer(modifier = Modifier.height(8.dp))
+}
+
+@Composable
+private fun ReminderContextMenu(
+    expanded: Boolean,
+    onDismiss: () -> Unit,
+    reminder: ReminderEntity,
+    showPin: Boolean = true,
+    onTogglePin: () -> Unit,
+    onDelete: () -> Unit
+) {
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismiss,
+        modifier = Modifier
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
+            .width(150.dp)
+            .clip(RoundedCornerShape(20.dp)),
+        offset = DpOffset(12.dp, 0.dp),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        if (showPin) {
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        if (reminder.isPinned) "Unpin" else "Pin",
+                        color = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.PushPin,
+                        contentDescription = null,
+                        tint = if (reminder.isPinned) PastelBlue else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                },
+                onClick = onTogglePin,
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
+            )
+        }
+        DropdownMenuItem(
+            text = {
+                Text(
+                    "Delete", 
+                    color = StatusOverdue,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            leadingIcon = {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = null,
+                    tint = StatusOverdue,
+                    modifier = Modifier.size(18.dp)
+                )
+            },
+            onClick = onDelete,
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
+        )
+    }
 }
 
 // ── Timeline Card ─────────────────────────────────────────────────────────────
@@ -597,16 +617,6 @@ private fun TimelineCard(
                     }
                 }
             }
-
-            if (reminder.isPinned) {
-                Spacer(modifier = Modifier.width(6.dp))
-                Icon(
-                    Icons.Default.PushPin,
-                    contentDescription = "Pinned",
-                    tint     = CharcoalDark,
-                    modifier = Modifier.size(14.dp)
-                )
-            }
         }
     }
 }
@@ -619,7 +629,8 @@ private fun QuickNoteCard(
     reminder: ReminderEntity,
     bgColor: Color,
     onLongPress: () -> Unit,
-    onToggleComplete: () -> Unit
+    onToggleComplete: () -> Unit,
+    onClick: () -> Unit
 ) {
     // Cards are always pastel so dark text/icons always work
     val checkIdle = Color.White.copy(alpha = 0.6f)
@@ -629,7 +640,7 @@ private fun QuickNoteCard(
             .width(150.dp)
             .clip(RoundedCornerShape(20.dp))
             .background(bgColor)
-            .combinedClickable(onClick = {}, onLongClick = onLongPress)
+            .combinedClickable(onClick = onClick, onLongClick = onLongPress)
             .padding(16.dp)
     ) {
         Column {
@@ -653,6 +664,15 @@ private fun QuickNoteCard(
                     color = CharcoalMedium,
                     fontSize = 10.sp
                 )
+                if (reminder.isPinned) {
+                    Spacer(modifier = Modifier.weight(1f))
+                    Icon(
+                        Icons.Default.PushPin,
+                        contentDescription = "Pinned",
+                        tint = CharcoalDark,
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
