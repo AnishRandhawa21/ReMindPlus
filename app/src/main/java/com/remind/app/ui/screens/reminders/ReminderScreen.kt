@@ -22,7 +22,13 @@ fun ReminderScreen(
     viewModel: ReminderViewModel
 ) {
 
-    val reminders by viewModel.reminders.collectAsStateWithLifecycle()
+    val quickNotes by viewModel
+        .quickNotes
+        .collectAsStateWithLifecycle()
+
+    val scheduledReminders by viewModel
+        .scheduledReminders
+        .collectAsStateWithLifecycle()
 
     var showDialog by remember {
         mutableStateOf(false)
@@ -56,38 +62,27 @@ fun ReminderScreen(
                 .padding(paddingValues)
         ) {
 
-            if (reminders.isEmpty()) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
 
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
+                // QUICK NOTES SECTION
 
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
+                if (quickNotes.isNotEmpty()) {
 
-                    Text(
-                        text = "No reminders yet",
-                        style = MaterialTheme.typography.headlineSmall
-                    )
+                    item {
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Quick Notes",
+                            style = MaterialTheme.typography.headlineSmall
+                        )
 
-                    Text(
-                        text = "Tap + to create your first reminder"
-                    )
-                }
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
 
-            } else {
-
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-
-                    items(reminders) { reminder ->
+                    items(quickNotes) { reminder ->
 
                         ReminderItem(
                             reminder = reminder,
@@ -110,6 +105,77 @@ fun ReminderScreen(
                                 showDialog = true
                             }
                         )
+                    }
+                }
+
+                // TIMELINE SECTION
+
+                if (scheduledReminders.isNotEmpty()) {
+
+                    item {
+
+                        Text(
+                            text = "Timeline",
+                            style = MaterialTheme.typography.headlineSmall
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+
+                    items(scheduledReminders) { reminder ->
+
+                        ReminderItem(
+                            reminder = reminder,
+
+                            onDelete = {
+                                viewModel.deleteReminder(reminder)
+                            },
+
+                            onToggleComplete = {
+                                viewModel.toggleReminderCompleted(reminder)
+                            },
+
+                            onTogglePinned = {
+                                viewModel.togglePinnedReminder(reminder)
+                            },
+
+                            onClick = {
+
+                                selectedReminder = reminder
+                                showDialog = true
+                            }
+                        )
+                    }
+                }
+
+                // EMPTY STATE
+
+                if (
+                    quickNotes.isEmpty() &&
+                    scheduledReminders.isEmpty()
+                ) {
+
+                    item {
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 80.dp),
+
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+
+                            Text(
+                                text = "No reminders yet",
+                                style = MaterialTheme.typography.headlineSmall
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text(
+                                text = "Tap + to create your first reminder"
+                            )
+                        }
                     }
                 }
             }

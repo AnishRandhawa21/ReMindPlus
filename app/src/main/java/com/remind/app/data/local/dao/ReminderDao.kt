@@ -54,4 +54,18 @@ interface ReminderDao {
         isPinned: Boolean,
         updatedAt: Long
     )
+
+    @Query("""
+    SELECT * FROM reminders
+    WHERE dueTime IS NULL
+    ORDER BY isPinned DESC, createdAt DESC
+""")
+    fun getQuickNotes(): Flow<List<ReminderEntity>>
+
+    @Query("""
+    SELECT * FROM reminders
+    WHERE dueTime IS NOT NULL
+    ORDER BY dueTime ASC
+""")
+    fun getScheduledReminders(): Flow<List<ReminderEntity>>
 }

@@ -10,6 +10,11 @@ class ReminderRepository(
     fun getAllReminders() =
         dao.getAllReminders()
 
+    fun getQuickNotes() =
+        dao.getQuickNotes()
+
+    fun getScheduledReminders() =
+        dao.getScheduledReminders()
     suspend fun insertReminder(reminder: ReminderEntity) {
         dao.insertReminder(reminder)
     }

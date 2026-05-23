@@ -21,6 +21,22 @@ class ReminderViewModel(
             initialValue = emptyList()
         )
 
+    val quickNotes = repository
+        .getQuickNotes()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    val scheduledReminders = repository
+        .getScheduledReminders()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
     fun toggleReminderCompleted(
         reminder: ReminderEntity
     ) {

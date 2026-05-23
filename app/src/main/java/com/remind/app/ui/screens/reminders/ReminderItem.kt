@@ -17,9 +17,7 @@ import com.remind.app.data.local.entity.ReminderEntity
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.graphics.Color
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.remind.app.utils.DateUtils
 @Composable
 fun ReminderItem(
     reminder: ReminderEntity,
@@ -29,11 +27,29 @@ fun ReminderItem(
     onClick: () -> Unit
 ) {
     val formattedDate = reminder.dueTime?.let {
+        DateUtils.formatReminderDate(it)
+    }
+    val reminderStatus = reminder.dueTime?.let {
 
-        SimpleDateFormat(
-            "dd MMM yyyy • hh:mm a",
-            Locale.getDefault()
-        ).format(Date(it))
+        when {
+
+            DateUtils.isOverdue(it) &&
+                    !reminder.isCompleted -> {
+                "Overdue"
+            }
+
+            DateUtils.isToday(it) -> {
+                "Today"
+            }
+
+            DateUtils.isTomorrow(it) -> {
+                "Tomorrow"
+            }
+
+            else -> {
+                "Upcoming"
+            }
+        }
     }
 
     Card(
@@ -101,12 +117,24 @@ fun ReminderItem(
 
                         Text(
                             text = "Due: $formattedDate",
-                            style = MaterialTheme.typography.bodySmall,
-                            textDecoration = if (reminder.isCompleted) {
-                                TextDecoration.LineThrough
-                            } else {
-                                null
-                            }
+                            style = MaterialTheme.typography.bodySmall
+                        )
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Text(
+                            text = when (reminderStatus) {
+
+                                "Overdue" -> "🔴 Overdue"
+
+                                "Today" -> "🟢 Today"
+
+                                "Tomorrow" -> "🔵 Tomorrow"
+
+                                else -> "⚪ Upcoming"
+                            },
+
+                            style = MaterialTheme.typography.bodySmall
                         )
                     }
                 }
