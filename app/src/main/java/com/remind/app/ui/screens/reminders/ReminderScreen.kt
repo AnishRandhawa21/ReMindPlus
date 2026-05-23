@@ -162,7 +162,6 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
                 dayChips.forEachIndexed { index, chip ->
                     val isSelected = index == selectedIdx
                     val isToday    = index == todayIdx
-                    val isPast     = index < todayIdx
 
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -183,9 +182,8 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
                             style = MaterialTheme.typography.labelSmall,
                             fontSize = 10.sp,
                             color = when {
-                                isSelected -> MaterialTheme.colorScheme.background
-                                isPast     -> MaterialTheme.colorScheme.outline
-                                else       -> onBgSecondary
+                                isSelected || isToday -> CharcoalDark // Dark text on light blue/white backgrounds
+                                else -> Cream // Light text on dark/surface backgrounds
                             }
                         )
                         Spacer(modifier = Modifier.height(4.dp))
@@ -195,9 +193,8 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
                                 fontWeight = if (isSelected || isToday) FontWeight.Bold else FontWeight.Normal
                             ),
                             color = when {
-                                isSelected -> MaterialTheme.colorScheme.background
-                                isPast     -> MaterialTheme.colorScheme.outline
-                                else       -> onBg
+                                isSelected || isToday -> CharcoalDark // Dark text on light blue/white backgrounds
+                                else -> Cream // Light text on dark/surface backgrounds
                             }
                         )
                     }

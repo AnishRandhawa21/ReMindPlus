@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.remind.app.ui.navigation.BottomNavItem
+import com.remind.app.ui.theme.CharcoalDark
 import com.remind.app.ui.theme.PastelBlueLight
 
 @Composable
@@ -26,11 +27,12 @@ fun BottomNavigationBar(navController: NavController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // All colours from MaterialTheme — adapts to light/dark automatically
+
     val barBackground  = MaterialTheme.colorScheme.surface
     val selectedTint   = MaterialTheme.colorScheme.onSurface
     val unselectedTint = MaterialTheme.colorScheme.onSurfaceVariant
     val selectedPill   = PastelBlueLight  // pastel pill is always light, looks good on both themes
+    val selectedIcon   = CharcoalDark     // Always dark to contrast with the light pill
 
     NavigationBar(
         containerColor = barBackground,
@@ -65,7 +67,7 @@ fun BottomNavigationBar(navController: NavController) {
                         Icon(
                             imageVector        = item.icon,
                             contentDescription = item.title,
-                            tint               = if (selected) selectedTint else unselectedTint,
+                            tint               = if (selected) selectedIcon else unselectedTint,
                             modifier           = Modifier.size(20.dp)
                         )
                     }

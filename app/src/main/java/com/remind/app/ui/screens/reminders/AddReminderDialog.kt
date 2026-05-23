@@ -105,7 +105,11 @@ fun AddReminderDialog(
                     label = { Text("Title") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    shape = RoundedCornerShape(14.dp)
+                    shape = RoundedCornerShape(14.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = CharcoalDark,
+                        unfocusedTextColor = CharcoalDark
+                    )
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 OutlinedTextField(
@@ -114,7 +118,11 @@ fun AddReminderDialog(
                     label = { Text("Description (optional)") },
                     modifier = Modifier.fillMaxWidth(),
                     maxLines = 3,
-                    shape = RoundedCornerShape(14.dp)
+                    shape = RoundedCornerShape(14.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = CharcoalDark,
+                        unfocusedTextColor = CharcoalDark
+                    )
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -124,7 +132,7 @@ fun AddReminderDialog(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(14.dp)
                 ) {
-                    Text(formattedDate ?: "Select Date", color = TextPrimary)
+                    Text(formattedDate ?: "Select Date", color = CharcoalDark)
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -137,7 +145,7 @@ fun AddReminderDialog(
                 ) {
                     Text(
                         text = formattedTime ?: "Set Time  (skip = Quick Note)",
-                        color = if (timeChosen) TextPrimary else TextSecondary
+                        color = if (timeChosen) CharcoalDark else TextSecondary
                     )
                 }
 
@@ -156,9 +164,12 @@ fun AddReminderDialog(
                 onClick = { onSave(title.trim(), description.trim(), buildDueTime()) },
                 enabled = title.isNotBlank(),
                 shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = CharcoalDark)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = CharcoalDark,
+                    contentColor = Cream
+                )
             ) {
-                Text(if (isEditing) "Update" else "Add", color = Cream)
+                Text(if (isEditing) "Update" else "Add")
             }
         },
         dismissButton = {
