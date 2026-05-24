@@ -21,8 +21,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -51,7 +54,6 @@ fun NotesScreen(
     viewModel: NoteViewModel
 ) {
     val notes by viewModel.notes.collectAsStateWithLifecycle()
-    var menuNote by remember { mutableStateOf<NoteEntity?>(null) }
 
     val bgColor     = MaterialTheme.colorScheme.background
     val onBg        = MaterialTheme.colorScheme.onBackground
@@ -122,7 +124,6 @@ fun NotesScreen(
                             onClick     = {
                                 navController.navigate("note_editor/${note.id}")
                             },
-                            onLongClick = { menuNote = note },
                             onPinClick  = { viewModel.togglePinnedNote(note) },
                             onDeleteClick = { viewModel.deleteNote(note) }
                         )
@@ -145,89 +146,6 @@ fun NotesScreen(
             Icon(Icons.Default.Add, contentDescription = "Add Note")
         }
     }
-
-    // ── Long-press context menu ───────────────────────────────────────────
-    menuNote?.let { note ->
-        AlertDialog(
-            onDismissRequest = { menuNote = null },
-            containerColor   = MaterialTheme.colorScheme.surface,
-            shape            = RoundedCornerShape(24.dp),
-            title = {
-                Text(
-                    text     = note.title.ifBlank { "Untitled" },
-                    style    = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color    = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    // Pin row
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(
-                                if (note.isPinned) PastelBlueLight
-                                else MaterialTheme.colorScheme.surfaceVariant
-                            )
-                            .combinedClickable(onClick = {
-                                viewModel.togglePinnedNote(note)
-                                menuNote = null
-                            })
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.PushPin,
-                            contentDescription = null,
-                            tint = if (note.isPinned) CharcoalDark else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Text(
-                            text  = if (note.isPinned) "Unpin note" else "Pin note",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                    // Delete row
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(PastelPinkLight)
-                            .combinedClickable(onClick = {
-                                viewModel.deleteNote(note)
-                                menuNote = null
-                            })
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Delete,
-                            contentDescription = null,
-                            tint     = StatusOverdue,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Text(
-                            text  = "Delete note",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = StatusOverdue
-                        )
-                    }
-                }
-            },
-            confirmButton  = {},
-            dismissButton  = {
-                TextButton(onClick = { menuNote = null }) {
-                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        )
-    }
 }
 
 // ── Note Card ─────────────────────────────────────────────────────────────────
@@ -238,16 +156,20 @@ fun NoteCard(
     note: NoteEntity,
     cardColor: Color,
     onClick: () -> Unit,
-    onLongClick: () -> Unit,
     onPinClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
+    var showMenu by remember { mutableStateOf(false) }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .background(cardColor)
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = { showMenu = true }
+            )
             .padding(16.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -283,10 +205,30 @@ fun NoteCard(
                 Spacer(modifier = Modifier.height(6.dp))
             }
 
-            // Content preview — show as-is; symbols like • ☐ ☑ are part of the text
-            val previewText = note.content.trim()
+            // Content preview
+            val previewText = remember(note.content) {
+                buildAnnotatedString {
+                    val lines = note.content.trim().split('\n')
+                    lines.forEachIndexed { i, line ->
+                        if (line.startsWith("☐ ")) {
+                            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                                append("○ ")
+                            }
+                            append(line.substring(2))
+                        } else if (line.startsWith("☑ ")) {
+                            withStyle(SpanStyle(color = CharcoalMedium.copy(alpha = 0.5f))) {
+                                append("◉ ")
+                                append(line.substring(2))
+                            }
+                        } else {
+                            append(line)
+                        }
+                        if (i < lines.size - 1) append("\n")
+                    }
+                }
+            }
 
-            if (previewText.isNotBlank()) {
+            if (previewText.text.isNotBlank()) {
                 Text(
                     text  = previewText,
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
@@ -304,8 +246,47 @@ fun NoteCard(
                 color = CharcoalDark.copy(alpha = 0.4f)
             )
         }
+
+        // ── Dropdown Menu ──
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false },
+            modifier = Modifier.background(MaterialTheme.colorScheme.surface),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            DropdownMenuItem(
+                text = { Text(if (note.isPinned) "Unpin note" else "Pin note") },
+                onClick = {
+                    onPinClick()
+                    showMenu = false
+                },
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.PushPin,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            )
+            DropdownMenuItem(
+                text = { Text("Delete note", color = StatusOverdue) },
+                onClick = {
+                    onDeleteClick()
+                    showMenu = false
+                },
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = null,
+                        tint = StatusOverdue,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            )
+        }
     }
 }
+
 
 private fun formatNoteDate(millis: Long): String {
     val sdf = java.text.SimpleDateFormat("MMM d", java.util.Locale.getDefault())
