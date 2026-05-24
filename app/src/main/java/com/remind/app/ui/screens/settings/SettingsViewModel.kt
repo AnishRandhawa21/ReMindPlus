@@ -26,7 +26,7 @@ class SettingsViewModel(
     var syncMessage by mutableStateOf("")
         private set
 
-    fun signOut() { // signout
+    fun signOut() { // signout 12
         viewModelScope.launch {
 
             isLoading = true
