@@ -98,6 +98,14 @@ interface ReminderDao {
         userId: String
     ): Flow<List<ReminderEntity>>
 
+    @Query("""
+    SELECT * FROM reminders
+    WHERE isDeleted = 0
+    AND isCompleted = 0
+    AND dueTime > :currentTime
+""")
+    suspend fun getActiveReminders(currentTime: Long): List<ReminderEntity>
+
     @Query("DELETE FROM reminders")
     suspend fun deleteAllReminders()
 

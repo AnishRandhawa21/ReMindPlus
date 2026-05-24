@@ -1,25 +1,27 @@
 package com.remind.app
 
+import android.Manifest
+import android.app.AlarmManager
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import com.remind.app.data.remote.SupabaseClient
-import io.github.jan.supabase.auth.handleDeeplinks
-import com.remind.app.ui.navigation.RootNavGraph
-import com.remind.app.ui.theme.ReMindTheme
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
-import com.remind.app.utils.NotificationHelper
-import com.remind.app.utils.AlarmScheduler
-import com.remind.app.utils.PreferenceManager
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import com.remind.app.data.remote.SupabaseClient
+import com.remind.app.ui.navigation.RootNavGraph
+import com.remind.app.ui.theme.ReMindTheme
+import com.remind.app.utils.NotificationHelper
+import com.remind.app.utils.PreferenceManager
+import io.github.jan.supabase.auth.handleDeeplinks
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,20 +30,7 @@ class MainActivity : ComponentActivity() {
         // Handle Deep Link on first launch
         SupabaseClient.client.handleDeeplinks(intent)
         
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (
-                ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.POST_NOTIFICATIONS
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                ActivityCompat.requestPermissions(
-                    this,
-                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-                    1001
-                )
-            }
-        }
+        requestPermissions()
         NotificationHelper.createNotificationChannel(this)
 
         val preferenceManager = PreferenceManager(this)
@@ -62,6 +51,32 @@ class MainActivity : ComponentActivity() {
                 accentColorIndex = accentIndex
             ) {
                 RootNavGraph()
+            }
+        }
+    }
+
+    private fun requestPermissions() {
+        // Notification permission for Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                    1001
+                )
+            }
+        }
+
+        // Exact Alarm Permission check for Android 12+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            if (!alarmManager.canScheduleExactAlarms()) {
+                val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                startActivity(intent)
             }
         }
     }
