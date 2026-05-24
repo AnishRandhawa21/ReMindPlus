@@ -32,5 +32,8 @@ data class RemoteReminder(
     val completedAt: Long?,
 
     @SerialName("is_pinned")
-    val isPinned: Boolean
+    val isPinned: Boolean,
+
+    @SerialName("is_deleted")
+    val isDeleted: Boolean
 )

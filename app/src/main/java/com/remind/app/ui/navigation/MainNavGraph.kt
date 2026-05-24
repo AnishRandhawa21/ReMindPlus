@@ -92,7 +92,8 @@ fun MainNavGraph(
 
         // Edit existing note
         composable(Routes.NOTE_EDITOR_WITH_ID) { backStackEntry ->
-            val noteId = backStackEntry.arguments?.getString("noteId")?.toIntOrNull()
+            val noteId = backStackEntry.arguments
+                ?.getString("noteId")
 
             var note by remember {
                 mutableStateOf<com.remind.app.data.local.entity.NoteEntity?>(null)

@@ -46,7 +46,8 @@ class SyncManager(
                     "due_time",
                     "is_completed",
                     "completed_at",
-                    "is_pinned"
+                    "is_pinned",
+                    "is_deleted"
                 )
             ) {
                 order(
@@ -56,12 +57,33 @@ class SyncManager(
             }
             .decodeList<RemoteReminder>()
 
-        val localEntities = remoteReminders.map {
-            it.toEntity()
-        }
+        remoteReminders.forEach { remoteReminder ->
 
-        reminderRepository.insertReminders(
-            localEntities
-        )
+            val localReminder =
+                reminderRepository.getReminderById(
+                    remoteReminder.id
+                )
+
+            val remoteEntity = remoteReminder.toEntity()
+
+            if (localReminder == null) {
+
+                reminderRepository.insertReminder(
+                    remoteEntity
+                )
+
+            } else {
+
+                if (
+                    remoteEntity.updatedAt >
+                    localReminder.updatedAt
+                ) {
+
+                    reminderRepository.updateReminder(
+                        remoteEntity
+                    )
+                }
+            }
+        }
     }
 }

@@ -24,7 +24,9 @@ fun ReminderEntity.toRemote(): RemoteReminder {
 
         completedAt = completedAt,
 
-        isPinned = isPinned
+        isPinned = isPinned,
+
+        isDeleted = isDeleted
     )
 }
 
@@ -52,6 +54,8 @@ fun RemoteReminder.toEntity(): ReminderEntity {
 
         isPinned = isPinned,
 
-        isSynced = true
+        isSynced = true,
+
+        isDeleted = isDeleted
     )
 }

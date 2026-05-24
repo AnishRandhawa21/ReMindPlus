@@ -15,6 +15,7 @@ interface ReminderDao {
     @Query("""
     SELECT * FROM reminders
     WHERE userId = :userId
+    AND isDeleted = 0
     ORDER BY isPinned DESC, createdAt DESC
 """)
     fun getAllReminders(
@@ -33,11 +34,25 @@ interface ReminderDao {
     suspend fun deleteReminder(reminder: ReminderEntity)
 
     @Query("""
+    UPDATE reminders
+    SET
+        isDeleted = 1,
+        isSynced = 0,
+        updatedAt = :updatedAt
+    WHERE id = :id
+""")
+    suspend fun softDeleteReminder(
+        id: String,
+        updatedAt: Long
+    )
+
+    @Query("""
         UPDATE reminders
         SET 
             isCompleted = :isCompleted,
             completedAt = :completedAt,
-            updatedAt = :updatedAt
+            updatedAt = :updatedAt,
+            isSynced = 0
         WHERE id = :id
     """)
     suspend fun updateCompletionStatus(
@@ -51,7 +66,8 @@ interface ReminderDao {
     UPDATE reminders
     SET 
         isPinned = :isPinned,
-        updatedAt = :updatedAt
+        updatedAt = :updatedAt,
+        isSynced = 0
     WHERE id = :id
 """)
     suspend fun updatePinnedStatus(
@@ -63,6 +79,7 @@ interface ReminderDao {
     @Query("""
     SELECT * FROM reminders
     WHERE userId = :userId
+    AND isDeleted = 0
     AND dueTime IS NULL
     ORDER BY isPinned DESC, createdAt DESC
 """)
@@ -73,6 +90,7 @@ interface ReminderDao {
     @Query("""
     SELECT * FROM reminders
     WHERE userId = :userId
+    AND isDeleted = 0
     AND dueTime IS NOT NULL
     ORDER BY dueTime ASC
 """)

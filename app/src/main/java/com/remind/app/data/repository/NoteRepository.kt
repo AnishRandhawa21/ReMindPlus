@@ -33,7 +33,7 @@ class NoteRepository(
     }
 
     suspend fun getNoteById(
-        id: Int
+        id: String
     ): NoteEntity? {
 
         return dao.getNoteById(id)
@@ -44,7 +44,7 @@ class NoteRepository(
     }
 
     suspend fun updatePinnedStatus(
-        id: Int,
+        id: String,
         isPinned: Boolean
     ) {
 

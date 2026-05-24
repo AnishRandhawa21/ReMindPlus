@@ -44,8 +44,10 @@ private val noteCardPalette = listOf(
     PastelPeachLight,
 )
 
-private fun noteColor(id: Int): Color =
-    noteCardPalette[kotlin.math.abs(id % noteCardPalette.size)]
+private fun noteColor(id: String): Color =
+    noteCardPalette[
+        kotlin.math.abs(id.hashCode()) % noteCardPalette.size
+    ]
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable

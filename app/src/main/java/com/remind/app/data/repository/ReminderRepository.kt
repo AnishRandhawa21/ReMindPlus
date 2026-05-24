@@ -88,4 +88,14 @@ class ReminderRepository(
 
         return dao.getReminderById(id)
     }
+
+    suspend fun softDeleteReminder(
+        id: String
+    ) {
+
+        dao.softDeleteReminder(
+            id = id,
+            updatedAt = System.currentTimeMillis()
+        )
+    }
 }

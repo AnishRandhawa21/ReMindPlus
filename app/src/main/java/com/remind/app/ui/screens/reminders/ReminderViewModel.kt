@@ -192,7 +192,9 @@ class ReminderViewModel(
                 reminderId = reminder.id.hashCode()
             )
 
-            repository.deleteReminder(reminder)
+            repository.softDeleteReminder(
+                reminder.id
+            )
         }
     }
 }

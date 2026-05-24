@@ -84,7 +84,7 @@ class NoteViewModel(
     }
 
     suspend fun getNoteById(
-        id: Int
+        id: String
     ): NoteEntity? {
 
         return repository.getNoteById(id)
