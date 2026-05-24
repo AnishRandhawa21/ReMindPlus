@@ -100,7 +100,7 @@ private fun TopSection() {
             painter = painterResource(R.drawable.ic_logo_app),
             contentDescription = "App Logo",
             modifier = Modifier.size(100.dp)
-        )
+        )//logo
 
         Spacer(Modifier.height(28.dp))
 
