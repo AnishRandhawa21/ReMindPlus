@@ -39,12 +39,24 @@ class ReminderViewModel(
         )
 
     fun toggleReminderCompleted(
+
+        context: Context,
+
         reminder: ReminderEntity
     ) {
 
         viewModelScope.launch {
 
             val completed = !reminder.isCompleted
+            if (completed) {
+
+                AlarmScheduler.cancelReminder(
+
+                    context = context,
+
+                    reminderId = reminder.id.hashCode()
+                )
+            }
 
             repository.updateCompletionStatus(
                 id = reminder.id,
@@ -120,22 +132,47 @@ class ReminderViewModel(
     }
 
     fun updateReminder(
+        context: Context,
         reminder: ReminderEntity,
         title: String,
         description: String,
         dueTime: Long?
     ) {
-
         viewModelScope.launch {
-
-            repository.updateReminder(
-                reminder.copy(
-                    title = title,
-                    description = description,
-                    dueTime = dueTime,
-                    updatedAt = System.currentTimeMillis()
-                )
+            // Cancel old alarm first
+            AlarmScheduler.cancelReminder(
+                context = context,
+                reminderId = reminder.id.hashCode()
             )
+
+            // Create updated reminder
+            val updatedReminder = reminder.copy(
+                title = title,
+                description = description,
+                dueTime = dueTime,
+                updatedAt = System.currentTimeMillis()
+            )
+
+            // Save updated reminder
+            repository.updateReminder(
+                updatedReminder
+            )
+            // Schedule new alarm if reminder has time
+            if (dueTime != null) {
+                AlarmScheduler.scheduleReminder(
+                    context = context,
+                    reminderId = reminder.id.hashCode(),
+                    title = title,
+                    message = if (
+                        description.isBlank()
+                    ) {
+                        "You have a reminder"
+                    } else {
+                        description
+                    },
+                    triggerTime = dueTime
+                )
+            }
         }
     }
 

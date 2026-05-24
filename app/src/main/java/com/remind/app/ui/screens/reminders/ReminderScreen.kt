@@ -230,7 +230,7 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
                                     reminder = note,
                                     bgColor = quickNoteColors[i % quickNoteColors.size],
                                     onLongPress = { menuReminder = note },
-                                    onToggleComplete = { viewModel.toggleReminderCompleted(note) },
+                                    onToggleComplete = { viewModel.toggleReminderCompleted(context,note) },
                                     onClick = { editingReminder = note }
                                 )
 
@@ -308,7 +308,7 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
                                     reminders      = timeReminders,
                                     onTogglePin    = { r -> viewModel.togglePinnedReminder(r) },
                                     onDelete       = { r -> viewModel.deleteReminder(context, r) },
-                                    onToggleComplete = { r -> viewModel.toggleReminderCompleted(r) },
+                                    onToggleComplete = { r -> viewModel.toggleReminderCompleted(context,r) },
                                     onClick        = { r -> editingReminder = r }
                                 )
                             }
@@ -352,7 +352,7 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
             selectedDayCalendar = selectedChip.fullDate,
             onDismiss = { editingReminder = null },
             onSave    = { title, desc, dueTime ->
-                viewModel.updateReminder(reminder, title, desc, dueTime)
+                viewModel.updateReminder(context,reminder, title, desc, dueTime)
                 editingReminder = null
             }
         )
