@@ -1,5 +1,7 @@
 package com.remind.app.ui.screens.settings
 
+import android.media.MediaPlayer
+import android.net.Uri
 import android.util.Log
 import android.app.Application
 import androidx.compose.runtime.getValue
@@ -29,6 +31,7 @@ class SettingsViewModel(
 
     private val authManager = AuthManager(application)
     private val preferenceManager = PreferenceManager(application)
+    private var mediaPlayer: MediaPlayer? = null
 
     var isLoading by mutableStateOf(false)
         private set
@@ -95,6 +98,31 @@ class SettingsViewModel(
         preferenceManager.notificationSound = newSound
         // Re-create the channel immediately so the new sound is registered
         com.remind.app.utils.NotificationHelper.createNotificationChannel(getApplication())
+        playSoundPreview(newSound)
+    }
+
+    private fun playSoundPreview(soundName: String) {
+        viewModelScope.launch {
+            try {
+                mediaPlayer?.stop()
+                mediaPlayer?.release()
+                
+                val context = getApplication<Application>()
+                val resId = context.resources.getIdentifier(soundName, "raw", context.packageName)
+                if (resId != 0) {
+                    mediaPlayer = MediaPlayer.create(context, resId)
+                    mediaPlayer?.start()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        mediaPlayer?.release()
+        mediaPlayer = null
     }
 
     fun updateAccentColor(index: Int) {
