@@ -3,12 +3,12 @@ package com.remind.app.ui.screens.notes
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -18,12 +18,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -36,8 +36,17 @@ fun NoteEditorScreen(
     onBack: () -> Unit,
     onSave: (title: String, content: String) -> Unit
 ) {
-    var title   by remember { mutableStateOf(initialTitle) }
-    var content by remember { mutableStateOf(TextFieldValue(initialContent)) }
+    var title by remember { mutableStateOf(initialTitle) }
+
+    // Single TextFieldValue for the entire note canvas
+    var content by remember {
+        mutableStateOf(
+            TextFieldValue(
+                text      = initialContent,
+                selection = TextRange(initialContent.length)
+            )
+        )
+    }
 
     val bgColor     = MaterialTheme.colorScheme.background
     val onBg        = MaterialTheme.colorScheme.onBackground
@@ -45,69 +54,47 @@ fun NoteEditorScreen(
     val surfaceVar  = MaterialTheme.colorScheme.surfaceVariant
     val outline     = MaterialTheme.colorScheme.outlineVariant
 
-    val contentFocus = remember { FocusRequester() }
+    // ── Insert text at current cursor position ────────────────────────────────
+    fun insertAtCursor(insertion: String) {
+        val text   = content.text
+        val start  = content.selection.start.coerceIn(0, text.length)
+        val end    = content.selection.end.coerceIn(0, text.length)
+        val before = text.substring(0, start)
+        val after  = text.substring(end)
 
-    // ── Formatting helpers ────────────────────────────────────────────────────
+        // If cursor is mid-line and we're inserting a line prefix,
+        // move to start of line first
+        val lineStart = before.lastIndexOf('\n') + 1
+        val isLinePrefix = insertion in listOf("• ", "– ", "☐ ")
 
-    val knownPrefixes = listOf("• ", "– ", "☐ ", "☑ ")
-
-    fun insertPrefix(prefix: String) {
-        val text      = content.text
-        val cursor    = content.selection.start
-        val lineStart = text.lastIndexOf('\n', cursor - 1) + 1
-        val lineText  = text.substring(lineStart)
-        val existing  = knownPrefixes.firstOrNull { lineText.startsWith(it) }
-
-        val (newText, newCursor) = if (existing != null) {
-            val before = text.substring(0, lineStart)
-            val after  = text.substring(lineStart + existing.length)
-            val nc     = (lineStart + prefix.length + (cursor - lineStart - existing.length)).coerceAtLeast(lineStart + prefix.length)
-            before + prefix + after to nc
+        if (isLinePrefix) {
+            val beforeLine = text.substring(0, lineStart)
+            val afterLine  = text.substring(lineStart)
+            val newText    = beforeLine + insertion + afterLine
+            val newCursor  = lineStart + insertion.length
+            content = TextFieldValue(
+                text      = newText,
+                selection = TextRange(newCursor)
+            )
         } else {
-            val before = text.substring(0, lineStart)
-            val after  = text.substring(lineStart)
-            before + prefix + after to cursor + prefix.length
+            val newText   = before + insertion + after
+            val newCursor = start + insertion.length
+            content = TextFieldValue(
+                text      = newText,
+                selection = TextRange(newCursor)
+            )
         }
-        content = TextFieldValue(text = newText, selection = TextRange(newCursor))
-    }
-
-    fun toggleCheckbox() {
-        val text      = content.text
-        val cursor    = content.selection.start
-        val lineStart = text.lastIndexOf('\n', cursor - 1) + 1
-        val lineText  = text.substring(lineStart)
-        val newText = when {
-            lineText.startsWith("☐ ") ->
-                text.substring(0, lineStart) + "☑ " + text.substring(lineStart + 2)
-            lineText.startsWith("☑ ") ->
-                text.substring(0, lineStart) + "☐ " + text.substring(lineStart + 2)
-            else -> text
-        }
-        content = content.copy(text = newText)
-    }
-
-    fun handleNewline() {
-        val text      = content.text
-        val cursor    = content.selection.start
-        val lineStart = text.lastIndexOf('\n', cursor - 1) + 1
-        val lineText  = text.substring(lineStart, cursor)
-        val prefix    = knownPrefixes.firstOrNull { lineText.startsWith(it) } ?: ""
-        // If line is only the prefix, exit list mode
-        val carry = if (lineText.trim() == prefix.trim()) "" else if (prefix == "☑ ") "☐ " else prefix
-        val insert = "\n$carry"
-        val newText = text.substring(0, cursor) + insert + text.substring(cursor)
-        content = TextFieldValue(text = newText, selection = TextRange(cursor + insert.length))
     }
 
     // ─────────────────────────────────────────────────────────────────────────
 
     Scaffold(
-        containerColor = bgColor,
+        containerColor      = bgColor,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor             = bgColor,
-                    titleContentColor          = onBg,
                     navigationIconContentColor = onBg,
                     actionIconContentColor     = onBg
                 ),
@@ -118,7 +105,6 @@ fun NoteEditorScreen(
                     }
                 },
                 actions = {
-                    // Save pill — no ripple inside the custom shape
                     val interactionSource = remember { MutableInteractionSource() }
                     Box(
                         modifier = Modifier
@@ -128,14 +114,16 @@ fun NoteEditorScreen(
                             .clickable(
                                 interactionSource = interactionSource,
                                 indication        = null,
-                                onClick           = { onSave(title.trim(), content.text.trim()) }
+                                onClick           = {
+                                    onSave(title.trim(), content.text.trim())
+                                }
                             )
                             .padding(horizontal = 18.dp, vertical = 9.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Row(
-                            verticalAlignment      = Alignment.CenterVertically,
-                            horizontalArrangement  = Arrangement.spacedBy(6.dp)
+                            verticalAlignment     = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Icon(
                                 Icons.Default.Check,
@@ -145,7 +133,8 @@ fun NoteEditorScreen(
                             )
                             Text(
                                 text  = "Save",
-                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                style = MaterialTheme.typography.labelMedium
+                                    .copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.background
                             )
                         }
@@ -159,6 +148,7 @@ fun NoteEditorScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .imePadding()
         ) {
 
             // ── Title ─────────────────────────────────────────────────────
@@ -166,23 +156,27 @@ fun NoteEditorScreen(
                 value         = title,
                 onValueChange = { title = it },
                 textStyle     = TextStyle(
-                    fontSize   = 26.sp,
+                    fontSize   = 24.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color      = onBg,
-                    lineHeight = 32.sp
+                    lineHeight = 30.sp
                 ),
-                cursorBrush = SolidColor(onBg),
-                singleLine  = true,
-                modifier    = Modifier
+                cursorBrush   = SolidColor(onBg),
+                singleLine    = true,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction      = ImeAction.Next
+                ),
+                modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 10.dp),
+                    .padding(horizontal = 20.dp, vertical = 10.dp),
                 decorationBox = { inner ->
                     Box {
                         if (title.isEmpty()) {
                             Text(
                                 "Title",
                                 style = TextStyle(
-                                    fontSize   = 26.sp,
+                                    fontSize   = 24.sp,
                                     fontWeight = FontWeight.ExtraBold,
                                     color      = onBgVariant.copy(alpha = 0.35f)
                                 )
@@ -194,67 +188,62 @@ fun NoteEditorScreen(
             )
 
             HorizontalDivider(
-                modifier  = Modifier.padding(horizontal = 24.dp),
+                modifier  = Modifier.padding(horizontal = 20.dp),
                 color     = outline,
                 thickness = 0.5.dp
             )
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // ── Formatting Toolbar ────────────────────────────────────────
+            // ── Formatting toolbar ────────────────────────────────────────
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(12.dp))
                     .background(surfaceVar)
-                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
                 verticalAlignment     = Alignment.CenterVertically
             ) {
-                // Bullet
-                FormatButton(label = "•",  tooltip = "Bullet",    onClick = { insertPrefix("• ") })
+                FormatButton("•")  { insertAtCursor("• ") }
                 ToolbarDivider(outline)
-                // Dash
-                FormatButton(label = "–",  tooltip = "Dash",      onClick = { insertPrefix("– ") })
+                FormatButton("–")  { insertAtCursor("– ") }
                 ToolbarDivider(outline)
-                // Add checkbox
-                FormatButton(label = "☐",  tooltip = "Checkbox",  onClick = { insertPrefix("☐ ") })
+                FormatButton("☐")  { insertAtCursor("☐ ") }
                 ToolbarDivider(outline)
-                // Toggle checked/unchecked on current line
-                FormatButton(label = "☑",  tooltip = "Toggle",    onClick = { toggleCheckbox() })
+                FormatButton("☑")  { insertAtCursor("☑ ") }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // ── Content ───────────────────────────────────────────────────
+            // ── Canvas — one big text field, full screen ──────────────────
+            val scrollState = rememberScrollState()
+
             BasicTextField(
-                value = content,
-                onValueChange = { new ->
-                    // Detect newline insertion → auto-continue list prefix
-                    val added = new.text.length - content.text.length
-                    val cursor = new.selection.start
-                    if (added == 1 && cursor > 0 && new.text.getOrNull(cursor - 1) == '\n') {
-                        content = new          // accept the newline first
-                        handleNewline()
-                    } else {
-                        content = new
-                    }
-                },
-                textStyle = TextStyle(
+                value         = content,
+                onValueChange = { content = it },
+                textStyle     = TextStyle(
                     fontSize   = 15.sp,
                     color      = onBg,
-                    lineHeight = 25.sp,
+                    lineHeight = 26.sp,
                     fontWeight = FontWeight.Normal
                 ),
-                cursorBrush = SolidColor(onBg),
+                cursorBrush   = SolidColor(onBg),
+                // NOT singleLine — this is the full canvas
+                // ImeAction.None keeps the Enter key visible on keyboard
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction      = ImeAction.None
+                ),
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 24.dp)
-                    .focusRequester(contentFocus)
-                    .verticalScroll(rememberScrollState()),
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .verticalScroll(scrollState)
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 40.dp),
                 decorationBox = { inner ->
-                    Box {
+                    Box(modifier = Modifier.fillMaxSize()) {
                         if (content.text.isEmpty()) {
                             Text(
                                 "Start writing...",
@@ -272,21 +261,21 @@ fun NoteEditorScreen(
     }
 }
 
-// ── Reusable toolbar button ───────────────────────────────────────────────────
+// ── Toolbar button ────────────────────────────────────────────────────────────
 
 @Composable
-private fun FormatButton(label: String, tooltip: String, onClick: () -> Unit) {
+private fun FormatButton(label: String, onClick: () -> Unit) {
     TextButton(
         onClick        = onClick,
-        modifier       = Modifier.defaultMinSize(minWidth = 44.dp, minHeight = 38.dp),
-        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-        shape          = RoundedCornerShape(10.dp)
+        modifier       = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 40.dp),
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+        shape          = RoundedCornerShape(8.dp)
     ) {
         Text(
             text  = label,
             style = MaterialTheme.typography.bodyLarge.copy(
-                fontWeight = FontWeight.SemiBold,
-                fontSize   = 18.sp
+                fontWeight = FontWeight.Medium,
+                fontSize   = 17.sp
             ),
             color = MaterialTheme.colorScheme.onSurface
         )
@@ -298,7 +287,7 @@ private fun RowScope.ToolbarDivider(color: androidx.compose.ui.graphics.Color) {
     Box(
         modifier = Modifier
             .width(0.5.dp)
-            .height(20.dp)
+            .height(18.dp)
             .background(color.copy(alpha = 0.4f))
     )
 }

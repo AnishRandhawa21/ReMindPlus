@@ -283,24 +283,14 @@ fun NoteCard(
                 Spacer(modifier = Modifier.height(6.dp))
             }
 
-            // Content preview — strip markdown-like prefixes for display
-            val previewText = note.content
-                .lines()
-                .joinToString("\n") { line ->
-                    line.trimStart()
-                        .removePrefix("• ")
-                        .removePrefix("– ")
-                        .removePrefix("☐ ")
-                        .removePrefix("☑ ")
-                }
-                .trim()
+            // Content preview — show as-is; symbols like • ☐ ☑ are part of the text
+            val previewText = note.content.trim()
 
             if (previewText.isNotBlank()) {
                 Text(
                     text  = previewText,
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
                     color = CharcoalMedium,
-                    // Dynamic height: show up to 8 lines, card expands naturally
                     maxLines = 8,
                     overflow = TextOverflow.Ellipsis
                 )
