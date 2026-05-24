@@ -328,9 +328,9 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
         }
     }
 
-    // ── Add dialog ────────────────────────────────────────────────────────────
+    // ── Add sheet ────────────────────────────────────────────────────────────
     if (showAddDialog) {
-        AddReminderDialog(
+        AddReminderBottomSheet(
             selectedDayCalendar = selectedChip.fullDate,
             onDismiss = { showAddDialog = false },
             onSave    = { title, desc, dueTime ->
@@ -340,9 +340,9 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
         )
     }
 
-    // ── Edit dialog ───────────────────────────────────────────────────────────
+    // ── Edit sheet ───────────────────────────────────────────────────────────
     editingReminder?.let { reminder ->
-        AddReminderDialog(
+        AddReminderBottomSheet(
             reminder            = reminder,
             selectedDayCalendar = selectedChip.fullDate,
             onDismiss = { editingReminder = null },
@@ -683,6 +683,7 @@ private fun QuickNoteCard(
                     fontWeight = FontWeight.SemiBold, fontSize = 13.sp
                 ),
                 color    = CharcoalDark,
+                textDecoration = if (reminder.isCompleted) TextDecoration.LineThrough else null,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -692,6 +693,7 @@ private fun QuickNoteCard(
                     text     = reminder.description,
                     style    = MaterialTheme.typography.bodySmall,
                     color    = CharcoalMedium,
+                    textDecoration = if (reminder.isCompleted) TextDecoration.LineThrough else null,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     fontSize = 11.sp
