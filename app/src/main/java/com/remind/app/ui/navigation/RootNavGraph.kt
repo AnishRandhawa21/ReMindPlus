@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -24,9 +25,6 @@ fun RootNavGraph() {
     val navController = rememberNavController()
     val viewModel: LoginViewModel = viewModel()
     val sessionStatus by viewModel.sessionStatus.collectAsState()
-
-    // Determine the start destination dynamically.
-    // This prevents the need to "navigate" on initial app load.
     val startRoute = remember(sessionStatus) {
         when (sessionStatus) {
             is SessionStatus.Authenticated -> Routes.MAIN
@@ -34,6 +32,7 @@ fun RootNavGraph() {
             else -> "loading" // Internal loading route
         }
     }
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
 
     NavHost(
         navController = navController,
@@ -50,6 +49,7 @@ fun RootNavGraph() {
 
         composable(Routes.LOGIN) {
             LoginScreen(
+                isLoading    = isLoading,
                 onLoginClick = { viewModel.signInWithGoogle() }
             )
         }
