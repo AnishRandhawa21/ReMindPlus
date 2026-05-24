@@ -70,13 +70,35 @@ fun AddReminderBottomSheet(
 
     fun buildDueTime(): Long? {
         if (!timeChosen) return null
-        val cal = Calendar.getInstance()
-        selectedDateMillis?.let { cal.timeInMillis = it }
-        cal.set(Calendar.HOUR_OF_DAY, pickedHour)
-        cal.set(Calendar.MINUTE, pickedMinute)
-        cal.set(Calendar.SECOND, 0)
-        cal.set(Calendar.MILLISECOND, 0)
-        return cal.timeInMillis
+        val selectedCal = Calendar.getInstance()
+        selectedDateMillis?.let {
+            selectedCal.timeInMillis = it
+        }
+        val finalCal = Calendar.getInstance().apply {
+            set(
+                Calendar.YEAR,
+                selectedCal.get(Calendar.YEAR)
+            )
+            set(
+                Calendar.MONTH,
+                selectedCal.get(Calendar.MONTH)
+            )
+            set(
+                Calendar.DAY_OF_MONTH,
+                selectedCal.get(Calendar.DAY_OF_MONTH)
+            )
+            set(
+                Calendar.HOUR_OF_DAY,
+                pickedHour
+            )
+            set(
+                Calendar.MINUTE,
+                pickedMinute
+            )
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        return finalCal.timeInMillis
     }
 
     val isEditing = reminder != null
