@@ -140,7 +140,7 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
                     .padding(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 8.dp)
             ) {
                 Text(
-                    text = SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(Date()),
+                    text = SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(selectedChip.fullDate.time),
                     style = MaterialTheme.typography.bodySmall,
                     color = onBgSecondary
                 )
