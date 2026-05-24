@@ -58,8 +58,33 @@ fun MainNavGraph(
         )
     )
 
+    val syncManager = remember {
+        SyncManager(
+            reminderRepo,
+            noteRepo
+        )
+    }
+
     val regularModifier = Modifier.padding(paddingValues)
     val editorModifier  = Modifier   // no bottom padding; editor uses imePadding()
+
+    LaunchedEffect(Unit) {
+
+        try {
+
+            syncManager.pushReminders()
+
+            syncManager.pullReminders()
+
+            syncManager.pushNotes()
+
+            syncManager.pullNotes()
+
+        } catch (e: Exception) {
+
+            e.printStackTrace()
+        }
+    }
 
     NavHost(
         navController    = navController,
@@ -127,10 +152,6 @@ fun MainNavGraph(
         }
 
         composable(Routes.SETTINGS) {
-            val syncManager = SyncManager(
-                reminderRepo,
-                noteRepo
-            )
             val settingsViewModel: SettingsViewModel = viewModel(
                 factory = SettingsViewModelFactory(
                     application = context.applicationContext as Application,
