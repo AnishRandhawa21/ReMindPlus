@@ -82,9 +82,15 @@ private val DarkColorScheme = darkColorScheme(
 fun ReMindTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
+    accentColorIndex: Int = 0,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
+    val accentColors = listOf(
+        PastelBlue, PastelGreen, PastelPink, PastelYellow, PastelLavender, PastelPeach
+    )
+    val selectedAccent = accentColors.getOrElse(accentColorIndex) { PastelBlue }
+
+    val baseColorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
@@ -92,6 +98,14 @@ fun ReMindTheme(
         darkTheme -> DarkColorScheme
         else      -> LightColorScheme
     }
+
+    // Override the primary colors with our custom accent
+    val colorScheme = baseColorScheme.copy(
+        primary = selectedAccent,
+        onPrimary = CharcoalDark, // Text on accent color should be dark for contrast
+        primaryContainer = selectedAccent.copy(alpha = 0.3f),
+        onPrimaryContainer = if (darkTheme) selectedAccent else CharcoalDark
+    )
 
     // ── Status bar icon colour ────────────────────────────────────────────────
     val view = LocalView.current

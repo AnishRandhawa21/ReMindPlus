@@ -31,6 +31,8 @@ import com.remind.app.ui.screens.settings.SettingsViewModel
 import com.remind.app.ui.screens.settings.SettingsViewModelFactory
 import com.remind.app.ui.screens.stats.StatsScreen
 import com.remind.app.data.remote.SyncManager
+import com.remind.app.utils.PreferenceManager
+
 @Composable
 fun MainNavGraph(
     navController: NavHostController,
@@ -40,22 +42,13 @@ fun MainNavGraph(
     val context        = LocalContext.current
     val database       = DatabaseProvider.getDatabase(context)
     val authManager = AuthManager(context)
+    val preferenceManager = remember { PreferenceManager(context) }
 
     val reminderRepo   = ReminderRepository(database.reminderDao(),authManager)
-    val viewModel: ReminderViewModel = viewModel(
-        factory = ReminderViewModelFactory(reminderRepo,authManager)
-    )
-
+    
     val noteRepo = NoteRepository(
         database.noteDao(),
         authManager
-    )
-
-    val noteViewModel: NoteViewModel = viewModel(
-        factory = NoteViewModelFactory(
-            noteRepo,
-            authManager
-        )
     )
 
     val syncManager = remember {
@@ -65,24 +58,37 @@ fun MainNavGraph(
         )
     }
 
+    val viewModel: ReminderViewModel = viewModel(
+        factory = ReminderViewModelFactory(
+            reminderRepo,
+            authManager,
+            syncManager,
+            preferenceManager
+        )
+    )
+
+    val noteViewModel: NoteViewModel = viewModel(
+        factory = NoteViewModelFactory(
+            noteRepo,
+            authManager,
+            syncManager,
+            preferenceManager
+        )
+    )
+
     val regularModifier = Modifier.padding(paddingValues)
     val editorModifier  = Modifier   // no bottom padding; editor uses imePadding()
 
     LaunchedEffect(Unit) {
-
-        try {
-
-            syncManager.pushReminders()
-
-            syncManager.pullReminders()
-
-            syncManager.pushNotes()
-
-            syncManager.pullNotes()
-
-        } catch (e: Exception) {
-
-            e.printStackTrace()
+        if (preferenceManager.autoSync) {
+            try {
+                syncManager.pushReminders()
+                syncManager.pullReminders()
+                syncManager.pushNotes()
+                syncManager.pullNotes()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 

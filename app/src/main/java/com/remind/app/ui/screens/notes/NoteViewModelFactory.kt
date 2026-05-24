@@ -4,9 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.remind.app.data.repository.NoteRepository
 import com.remind.app.data.remote.AuthManager
+import com.remind.app.data.remote.SyncManager
+import com.remind.app.utils.PreferenceManager
+
 class NoteViewModelFactory(
     private val repository: NoteRepository,
-    private val authManager: AuthManager
+    private val authManager: AuthManager,
+    private val syncManager: SyncManager,
+    private val preferenceManager: PreferenceManager
 ) : ViewModelProvider.Factory {
 
     @Suppress("UNCHECKED_CAST")
@@ -18,7 +23,9 @@ class NoteViewModelFactory(
 
             return NoteViewModel(
                 repository,
-                authManager
+                authManager,
+                syncManager,
+                preferenceManager
             ) as T
         }
 
