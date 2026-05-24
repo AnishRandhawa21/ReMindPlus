@@ -72,8 +72,7 @@ class SettingsViewModel(
     var theme by mutableStateOf(preferenceManager.theme)
     var autoSync by mutableStateOf(preferenceManager.autoSync)
     var notificationsEnabled by mutableStateOf(preferenceManager.notificationsEnabled)
-    var vibrationEnabled by mutableStateOf(preferenceManager.vibrationEnabled)
-    var soundEnabled by mutableStateOf(preferenceManager.soundEnabled)
+    var notificationSound by mutableStateOf(preferenceManager.notificationSound)
     var accentColorIndex by mutableIntStateOf(preferenceManager.accentColor)
 
     fun updateTheme(newTheme: String) {
@@ -91,14 +90,11 @@ class SettingsViewModel(
         preferenceManager.notificationsEnabled = enabled
     }
 
-    fun updateVibration(enabled: Boolean) {
-        vibrationEnabled = enabled
-        preferenceManager.vibrationEnabled = enabled
-    }
-
-    fun updateSound(enabled: Boolean) {
-        soundEnabled = enabled
-        preferenceManager.soundEnabled = enabled
+    fun updateNotificationSound(newSound: String) {
+        notificationSound = newSound
+        preferenceManager.notificationSound = newSound
+        // Re-create the channel immediately so the new sound is registered
+        com.remind.app.utils.NotificationHelper.createNotificationChannel(getApplication())
     }
 
     fun updateAccentColor(index: Int) {

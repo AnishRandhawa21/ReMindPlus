@@ -14,8 +14,7 @@ class PreferenceManager(context: Context) {
         private const val KEY_ACCENT_COLOR = "key_accent_color"
         private const val KEY_AUTO_SYNC = "key_auto_sync"
         private const val KEY_NOTIFICATIONS = "key_notifications"
-        private const val KEY_VIBRATION = "key_vibration"
-        private const val KEY_SOUND = "key_sound"
+        private const val KEY_NOTIFICATION_SOUND = "key_notification_sound"
     }
 
     private val _themeFlow = MutableStateFlow(sharedPreferences.getString(KEY_THEME, "System") ?: "System")
@@ -53,11 +52,7 @@ class PreferenceManager(context: Context) {
         get() = sharedPreferences.getBoolean(KEY_NOTIFICATIONS, true)
         set(value) = sharedPreferences.edit().putBoolean(KEY_NOTIFICATIONS, value).apply()
 
-    var vibrationEnabled: Boolean
-        get() = sharedPreferences.getBoolean(KEY_VIBRATION, true)
-        set(value) = sharedPreferences.edit().putBoolean(KEY_VIBRATION, value).apply()
-
-    var soundEnabled: Boolean
-        get() = sharedPreferences.getBoolean(KEY_SOUND, false)
-        set(value) = sharedPreferences.edit().putBoolean(KEY_SOUND, value).apply()
+    var notificationSound: String
+        get() = sharedPreferences.getString(KEY_NOTIFICATION_SOUND, "notification_1") ?: "notification_1"
+        set(value) = sharedPreferences.edit().putString(KEY_NOTIFICATION_SOUND, value).apply()
 }

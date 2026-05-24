@@ -149,18 +149,9 @@ fun SettingsScreen(
                         onCheckedChange = { viewModel.updateNotifications(it) }
                     )
                     SettingsDivider()
-                    ToggleSettingsItem(
-                        icon = Icons.Rounded.Vibration,
-                        title = "Vibration",
-                        checked = viewModel.vibrationEnabled,
-                        onCheckedChange = { viewModel.updateVibration(it) }
-                    )
-                    SettingsDivider()
-                    ToggleSettingsItem(
-                        icon = Icons.AutoMirrored.Rounded.VolumeUp,
-                        title = "Sound",
-                        checked = viewModel.soundEnabled,
-                        onCheckedChange = { viewModel.updateSound(it) }
+                    SoundSelectorItem(
+                        selectedSound = viewModel.notificationSound,
+                        onSoundSelected = { viewModel.updateNotificationSound(it) }
                     )
                 }
             }
@@ -192,6 +183,94 @@ fun SettingsScreen(
 
             item {
                 Spacer(modifier = Modifier.height(32.dp))
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SoundSelectorItem(
+    selectedSound: String,
+    onSoundSelected: (String) -> Unit
+) {
+    val soundOptions = listOf(
+        "notification_1" to "Alert 1",
+        "notification_2" to "Alert 2",
+        "notification_3" to "Alert 3",
+        "notification_4" to "Alert 4",
+        "notification_5" to "Alert 5"
+    )
+    var expanded by remember { mutableStateOf(false) }
+    val currentLabel = soundOptions.find { it.first == selectedSound }?.second ?: "Default"
+
+    Column(modifier = Modifier.padding(16.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Rounded.MusicNote,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Text(
+                    text = "Notification Sound",
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium)
+                )
+            }
+            
+            Box {
+                Surface(
+                    onClick = { expanded = true },
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = currentLabel,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Icon(
+                            if (expanded) Icons.Rounded.ArrowDropUp else Icons.Rounded.ArrowDropDown,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
+
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                ) {
+                    soundOptions.forEach { (value, label) ->
+                        DropdownMenuItem(
+                            text = { 
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.bodyMedium
+                                ) 
+                            },
+                            onClick = {
+                                onSoundSelected(value)
+                                expanded = false
+                            },
+                            trailingIcon = if (selectedSound == value) {
+                                { Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                            } else null
+                        )
+                    }
+                }
             }
         }
     }
