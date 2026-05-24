@@ -64,6 +64,10 @@ class SettingsViewModel(
 
                 syncManager.pullReminders()
 
+                syncManager.pushNotes()
+
+                syncManager.pullNotes()
+
                 syncMessage = "Sync completed"
 
             } catch (e: Exception) {

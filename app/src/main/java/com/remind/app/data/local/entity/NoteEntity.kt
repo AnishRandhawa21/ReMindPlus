@@ -21,5 +21,7 @@ data class NoteEntity(
 
     val updatedAt: Long = System.currentTimeMillis(),
 
-    val isSynced: Boolean = false
+    val isSynced: Boolean = false,
+
+    val isDeleted: Boolean = false
 )

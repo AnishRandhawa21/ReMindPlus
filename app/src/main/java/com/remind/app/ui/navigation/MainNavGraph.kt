@@ -127,7 +127,10 @@ fun MainNavGraph(
         }
 
         composable(Routes.SETTINGS) {
-            val syncManager = SyncManager(reminderRepo)
+            val syncManager = SyncManager(
+                reminderRepo,
+                noteRepo
+            )
             val settingsViewModel: SettingsViewModel = viewModel(
                 factory = SettingsViewModelFactory(
                     application = context.applicationContext as Application,

@@ -52,6 +52,38 @@ interface NoteDao {
         updatedAt: Long
     )
 
+    @Query("""
+    SELECT * FROM notes
+    WHERE userId = :userId
+    AND isSynced = 0
+""")
+    suspend fun getUnsyncedNotes(
+        userId: String
+    ): List<NoteEntity>
+
+    @Query("""
+    UPDATE notes
+    SET isSynced = 1
+    WHERE id = :id
+""")
+    suspend fun markNoteSynced(
+        id: String
+    )
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNotes(
+        notes: List<NoteEntity>
+    )
+
+    @Query("""
+    SELECT * FROM notes
+    WHERE id = :id
+    LIMIT 1
+""")
+    suspend fun getNoteByIdSync(
+        id: String
+    ): NoteEntity?
+
     @Query("DELETE FROM notes")
     suspend fun deleteAllNotes()
 }

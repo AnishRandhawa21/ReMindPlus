@@ -59,4 +59,27 @@ class NoteRepository(
         return authManager.getCurrentUserId()
             ?: throw IllegalStateException("User not logged in")
     }
+
+    suspend fun getUnsyncedNotes(): List<NoteEntity> {
+        return dao.getUnsyncedNotes(getUserId())
+    }
+
+    suspend fun markNoteSynced(
+        id: String
+    ) {
+        dao.markNoteSynced(id)
+    }
+
+    suspend fun insertNotes(
+        notes: List<NoteEntity>
+    ) {
+        dao.insertNotes(notes)
+    }
+
+    suspend fun getNoteByIdSync(
+        id: String
+    ): NoteEntity? {
+
+        return dao.getNoteByIdSync(id)
+    }
 }

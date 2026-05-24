@@ -8,9 +8,15 @@ import com.remind.app.data.remote.model.toEntity
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.postgrest.result.PostgrestResult
+import com.remind.app.data.remote.model.RemoteNote
+import com.remind.app.data.remote.model.toRemote
+import com.remind.app.data.remote.model.toEntity
+import com.remind.app.data.repository.NoteRepository
+
 class SyncManager(
 
-    private val reminderRepository: ReminderRepository
+    private val reminderRepository: ReminderRepository,
+    private val noteRepository: NoteRepository
 ) {
 
     suspend fun pushReminders() {
@@ -80,6 +86,78 @@ class SyncManager(
                 ) {
 
                     reminderRepository.updateReminder(
+                        remoteEntity
+                    )
+                }
+            }
+        }
+    }
+
+    suspend fun pushNotes() {
+
+        val unsyncedNotes =
+            noteRepository.getUnsyncedNotes()
+
+        unsyncedNotes.forEach { note ->
+
+            SupabaseClient.client
+                .from("notes")
+                .upsert(
+                    note.toRemote()
+                )
+
+            noteRepository
+                .markNoteSynced(note.id)
+        }
+    }
+
+    suspend fun pullNotes() {
+
+        val remoteNotes = SupabaseClient.client
+            .from("notes")
+            .select(
+                columns = Columns.list(
+                    "id",
+                    "user_id",
+                    "title",
+                    "content",
+                    "is_pinned",
+                    "created_at",
+                    "updated_at",
+                    "is_deleted"
+                )
+            ) {
+                order(
+                    column = "created_at",
+                    order = Order.DESCENDING
+                )
+            }
+            .decodeList<RemoteNote>()
+
+        remoteNotes.forEach { remoteNote ->
+
+            val localNote =
+                noteRepository.getNoteByIdSync(
+                    remoteNote.id
+                )
+
+            val remoteEntity =
+                remoteNote.toEntity()
+
+            if (localNote == null) {
+
+                noteRepository.insertNote(
+                    remoteEntity
+                )
+
+            } else {
+
+                if (
+                    remoteEntity.updatedAt >
+                    localNote.updatedAt
+                ) {
+
+                    noteRepository.updateNote(
                         remoteEntity
                     )
                 }
