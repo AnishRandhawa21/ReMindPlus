@@ -14,25 +14,25 @@ sealed class BottomNavItem(
 ) {
 
     object Reminders : BottomNavItem(
-        route = "reminders",
+        route = Routes.REMINDERS,
         title = "Reminders",
         icon = Icons.Default.CheckCircle
     )
 
     object Notes : BottomNavItem(
-        route = "notes",
+        route = Routes.NOTES,
         title = "Notes",
         icon = Icons.Default.Note
     )
 
     object Stats : BottomNavItem(
-        route = "stats",
+        route = Routes.STATS,
         title = "Stats",
         icon = Icons.Default.BarChart
     )
 
     object Settings : BottomNavItem(
-        route = "settings",
+        route = Routes.SETTINGS,
         title = "Settings",
         icon = Icons.Default.Settings
     )
