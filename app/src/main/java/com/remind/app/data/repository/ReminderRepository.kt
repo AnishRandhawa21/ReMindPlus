@@ -65,4 +65,27 @@ class ReminderRepository(
             updatedAt = System.currentTimeMillis()
         )
     }
+
+    suspend fun getUnsyncedReminders(): List<ReminderEntity> {
+        return dao.getUnsyncedReminders(getUserId())
+    }
+
+    suspend fun markReminderSynced(
+        id: String
+    ) {
+        dao.markReminderSynced(id)
+    }
+
+    suspend fun insertReminders(
+        reminders: List<ReminderEntity>
+    ) {
+        dao.insertReminders(reminders)
+    }
+
+    suspend fun getReminderById(
+        id: String
+    ): ReminderEntity? {
+
+        return dao.getReminderById(id)
+    }
 }

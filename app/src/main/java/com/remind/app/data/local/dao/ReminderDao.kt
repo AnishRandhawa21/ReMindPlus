@@ -82,4 +82,36 @@ interface ReminderDao {
 
     @Query("DELETE FROM reminders")
     suspend fun deleteAllReminders()
+
+    @Query("""
+    SELECT * FROM reminders
+    WHERE userId = :userId
+    AND isSynced = 0
+""")
+    suspend fun getUnsyncedReminders(
+        userId: String
+    ): List<ReminderEntity>
+
+    @Query("""
+    UPDATE reminders
+    SET isSynced = 1
+    WHERE id = :id
+""")
+    suspend fun markReminderSynced(
+        id: String
+    )
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertReminders(
+        reminders: List<ReminderEntity>
+    )
+
+    @Query("""
+    SELECT * FROM reminders
+    WHERE id = :id
+    LIMIT 1
+""")
+    suspend fun getReminderById(
+        id: String
+    ): ReminderEntity?
 }

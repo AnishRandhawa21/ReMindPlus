@@ -30,7 +30,7 @@ import com.remind.app.ui.screens.settings.SettingsScreen
 import com.remind.app.ui.screens.settings.SettingsViewModel
 import com.remind.app.ui.screens.settings.SettingsViewModelFactory
 import com.remind.app.ui.screens.stats.StatsScreen
-
+import com.remind.app.data.remote.SyncManager
 @Composable
 fun MainNavGraph(
     navController: NavHostController,
@@ -126,12 +126,13 @@ fun MainNavGraph(
         }
 
         composable(Routes.SETTINGS) {
-
+            val syncManager = SyncManager(reminderRepo)
             val settingsViewModel: SettingsViewModel = viewModel(
                 factory = SettingsViewModelFactory(
                     application = context.applicationContext as Application,
                     reminderRepository = reminderRepo,
-                    noteRepository = noteRepo
+                    noteRepository = noteRepo,
+                    syncManager = syncManager
                 )
             )
 

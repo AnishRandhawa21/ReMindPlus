@@ -28,6 +28,32 @@ fun SettingsScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        Button(
+            onClick = { viewModel.syncReminders() },
+            enabled = !viewModel.isLoading
+        ) {
+
+            if (viewModel.isLoading) {
+
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp
+                )
+
+            } else {
+
+                Text("Sync Reminders")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text = viewModel.syncMessage,
+            style = MaterialTheme.typography.bodyMedium
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = "Settings Screen",
             style = MaterialTheme.typography.headlineMedium
