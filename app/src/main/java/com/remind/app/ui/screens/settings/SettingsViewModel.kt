@@ -7,10 +7,14 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.remind.app.data.remote.AuthManager
+import com.remind.app.data.repository.NoteRepository
+import com.remind.app.data.repository.ReminderRepository
 import kotlinx.coroutines.launch
 
 class SettingsViewModel(
-    application: Application
+    application: Application,
+    private val reminderRepository: ReminderRepository,
+    private val noteRepository: NoteRepository
 ) : AndroidViewModel(application) {
 
     private val authManager = AuthManager(application)
@@ -20,12 +24,23 @@ class SettingsViewModel(
 
     fun signOut() {
         viewModelScope.launch {
+
             isLoading = true
+
             try {
+
+                reminderRepository.deleteAllReminders()
+
+                noteRepository.deleteAllNotes()
+
                 authManager.signOut()
+
             } catch (e: Exception) {
+
                 e.printStackTrace()
+
             } finally {
+
                 isLoading = false
             }
         }

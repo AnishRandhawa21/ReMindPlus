@@ -9,9 +9,12 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import android.content.Context
+import com.remind.app.data.remote.AuthManager
 import com.remind.app.utils.AlarmScheduler
+
 class ReminderViewModel(
-    private val repository: ReminderRepository
+    private val repository: ReminderRepository,
+    private val authManager: AuthManager
 ) : ViewModel() {
 
     val reminders = repository
@@ -82,14 +85,14 @@ class ReminderViewModel(
 
         viewModelScope.launch {
 
+            val userId = authManager.getCurrentUserId()
+                ?: return@launch
+
             val reminder = ReminderEntity(
-
+                userId = userId,
                 title = title,
-
                 description = description,
-
                 dueTime = dueTime,
-
                 isSynced = false
             )
 
@@ -195,11 +198,15 @@ class ReminderViewModel(
 }
 
 class ReminderViewModelFactory(
-    private val repository: ReminderRepository
-) : ViewModelProvider.Factory {
+    private val repository: ReminderRepository,
+    private val authManager: AuthManager
+) : ViewModelProvider.Factory{
 
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
 
-        return ReminderViewModel(repository) as T
+        return ReminderViewModel(
+            repository,
+            authManager
+        ) as T
     }
 }

@@ -2,13 +2,14 @@ package com.remind.app.data.repository
 
 import com.remind.app.data.local.dao.NoteDao
 import com.remind.app.data.local.entity.NoteEntity
-
+import com.remind.app.data.remote.AuthManager
 class NoteRepository(
-    private val dao: NoteDao
-) {
+    private val dao: NoteDao,
+    private val authManager: AuthManager
+){
 
     fun getAllNotes() =
-        dao.getAllNotes()
+        dao.getAllNotes(getUserId())
 
     suspend fun insertNote(
         note: NoteEntity
@@ -38,6 +39,10 @@ class NoteRepository(
         return dao.getNoteById(id)
     }
 
+    suspend fun deleteAllNotes() {
+        dao.deleteAllNotes()
+    }
+
     suspend fun updatePinnedStatus(
         id: Int,
         isPinned: Boolean
@@ -48,5 +53,10 @@ class NoteRepository(
             isPinned = isPinned,
             updatedAt = System.currentTimeMillis()
         )
+    }
+
+    private fun getUserId(): String {
+        return authManager.getCurrentUserId()
+            ?: throw IllegalStateException("User not logged in")
     }
 }

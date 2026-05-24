@@ -13,10 +13,13 @@ import kotlinx.coroutines.flow.Flow
 interface ReminderDao {
 
     @Query("""
-        SELECT * FROM reminders
-        ORDER BY isPinned DESC, createdAt DESC
-    """)
-    fun getAllReminders(): Flow<List<ReminderEntity>>
+    SELECT * FROM reminders
+    WHERE userId = :userId
+    ORDER BY isPinned DESC, createdAt DESC
+""")
+    fun getAllReminders(
+        userId: String
+    ): Flow<List<ReminderEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertReminder(
@@ -59,15 +62,24 @@ interface ReminderDao {
 
     @Query("""
     SELECT * FROM reminders
-    WHERE dueTime IS NULL
+    WHERE userId = :userId
+    AND dueTime IS NULL
     ORDER BY isPinned DESC, createdAt DESC
 """)
-    fun getQuickNotes(): Flow<List<ReminderEntity>>
+    fun getQuickNotes(
+        userId: String
+    ): Flow<List<ReminderEntity>>
 
     @Query("""
     SELECT * FROM reminders
-    WHERE dueTime IS NOT NULL
+    WHERE userId = :userId
+    AND dueTime IS NOT NULL
     ORDER BY dueTime ASC
 """)
-    fun getScheduledReminders(): Flow<List<ReminderEntity>>
+    fun getScheduledReminders(
+        userId: String
+    ): Flow<List<ReminderEntity>>
+
+    @Query("DELETE FROM reminders")
+    suspend fun deleteAllReminders()
 }

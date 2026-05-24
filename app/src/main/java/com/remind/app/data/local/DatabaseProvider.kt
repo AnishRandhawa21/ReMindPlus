@@ -1,6 +1,5 @@
 package com.remind.app.data.local
 
-
 import android.content.Context
 import androidx.room.Room
 
@@ -17,7 +16,9 @@ object DatabaseProvider {
                 context.applicationContext,
                 AppDatabase::class.java,
                 "remindplus_db"
-            ).build()
+            )
+                .fallbackToDestructiveMigration()
+                .build()
 
             INSTANCE = instance
 

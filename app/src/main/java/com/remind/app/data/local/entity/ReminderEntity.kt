@@ -10,6 +10,8 @@ data class ReminderEntity(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),
 
+    val userId: String,
+
     val title: String,
 
     val description: String = "",

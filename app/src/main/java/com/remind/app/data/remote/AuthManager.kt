@@ -10,6 +10,14 @@ class AuthManager(
     private val context: Context
 ) {
 
+    fun getCurrentUserId(): String? {
+        return SupabaseClient
+            .client
+            .auth
+            .currentUserOrNull()
+            ?.id
+    }
+
     /**
      * Sign in with Google using OAuth (opens browser)
      */

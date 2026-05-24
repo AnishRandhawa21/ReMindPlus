@@ -2,19 +2,25 @@ package com.remind.app.data.repository
 
 import com.remind.app.data.local.dao.ReminderDao
 import com.remind.app.data.local.entity.ReminderEntity
-
+import com.remind.app.data.remote.AuthManager
 class ReminderRepository(
-    private val dao: ReminderDao
+    private val dao: ReminderDao,
+    private val authManager: AuthManager
 ) {
 
+    private fun getUserId(): String {
+        return authManager.getCurrentUserId()
+            ?: throw IllegalStateException("User not logged in")
+    }
+
     fun getAllReminders() =
-        dao.getAllReminders()
+        dao.getAllReminders(getUserId())
 
     fun getQuickNotes() =
-        dao.getQuickNotes()
+        dao.getQuickNotes(getUserId())
 
     fun getScheduledReminders() =
-        dao.getScheduledReminders()
+        dao.getScheduledReminders(getUserId())
     suspend fun insertReminder(
         reminder: ReminderEntity
     ): Long {
@@ -28,6 +34,10 @@ class ReminderRepository(
 
     suspend fun deleteReminder(reminder: ReminderEntity) {
         dao.deleteReminder(reminder)
+    }
+
+    suspend fun deleteAllReminders() {
+        dao.deleteAllReminders()
     }
 
     suspend fun updateCompletionStatus(

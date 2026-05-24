@@ -1,5 +1,6 @@
 package com.remind.app.ui.navigation
 
+import android.app.Application
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -9,7 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import com.remind.app.data.remote.AuthManager
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -26,6 +27,8 @@ import com.remind.app.ui.screens.reminders.ReminderScreen
 import com.remind.app.ui.screens.reminders.ReminderViewModel
 import com.remind.app.ui.screens.reminders.ReminderViewModelFactory
 import com.remind.app.ui.screens.settings.SettingsScreen
+import com.remind.app.ui.screens.settings.SettingsViewModel
+import com.remind.app.ui.screens.settings.SettingsViewModelFactory
 import com.remind.app.ui.screens.stats.StatsScreen
 
 @Composable
@@ -36,19 +39,25 @@ fun MainNavGraph(
 ) {
     val context        = LocalContext.current
     val database       = DatabaseProvider.getDatabase(context)
+    val authManager = AuthManager(context)
 
-    val reminderRepo   = ReminderRepository(database.reminderDao())
+    val reminderRepo   = ReminderRepository(database.reminderDao(),authManager)
     val viewModel: ReminderViewModel = viewModel(
-        factory = ReminderViewModelFactory(reminderRepo)
+        factory = ReminderViewModelFactory(reminderRepo,authManager)
     )
 
-    val noteRepo       = NoteRepository(database.noteDao())
+    val noteRepo = NoteRepository(
+        database.noteDao(),
+        authManager
+    )
+
     val noteViewModel: NoteViewModel = viewModel(
-        factory = NoteViewModelFactory(noteRepo)
+        factory = NoteViewModelFactory(
+            noteRepo,
+            authManager
+        )
     )
 
-    // Editor screens must NOT get the bottom-bar padding — they manage their
-    // own insets via imePadding(). Regular screens get the full paddingValues.
     val regularModifier = Modifier.padding(paddingValues)
     val editorModifier  = Modifier   // no bottom padding; editor uses imePadding()
 
@@ -117,7 +126,18 @@ fun MainNavGraph(
         }
 
         composable(Routes.SETTINGS) {
-            SettingsScreen()
+
+            val settingsViewModel: SettingsViewModel = viewModel(
+                factory = SettingsViewModelFactory(
+                    application = context.applicationContext as Application,
+                    reminderRepository = reminderRepo,
+                    noteRepository = noteRepo
+                )
+            )
+
+            SettingsScreen(
+                viewModel = settingsViewModel
+            )
         }
     }
 }

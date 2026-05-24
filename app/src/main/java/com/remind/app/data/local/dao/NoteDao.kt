@@ -8,10 +8,13 @@ import kotlinx.coroutines.flow.Flow
 interface NoteDao {
 
     @Query("""
-        SELECT * FROM notes
-        ORDER BY isPinned DESC, updatedAt DESC
-    """)
-    fun getAllNotes(): Flow<List<NoteEntity>>
+    SELECT * FROM notes
+    WHERE userId = :userId
+    ORDER BY isPinned DESC, updatedAt DESC
+""")
+    fun getAllNotes(
+        userId: String
+    ): Flow<List<NoteEntity>>
 
     @Query("""
     SELECT * FROM notes
@@ -48,4 +51,7 @@ interface NoteDao {
         isPinned: Boolean,
         updatedAt: Long
     )
+
+    @Query("DELETE FROM notes")
+    suspend fun deleteAllNotes()
 }

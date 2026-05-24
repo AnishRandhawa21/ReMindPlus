@@ -7,9 +7,10 @@ import com.remind.app.data.repository.NoteRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-
+import com.remind.app.data.remote.AuthManager
 class NoteViewModel(
-    private val repository: NoteRepository
+    private val repository: NoteRepository,
+    private val authManager: AuthManager
 ) : ViewModel() {
 
     val notes = repository
@@ -27,8 +28,12 @@ class NoteViewModel(
 
         viewModelScope.launch {
 
+            val userId = authManager.getCurrentUserId()
+                ?: return@launch
+
             repository.insertNote(
                 NoteEntity(
+                    userId = userId,
                     title = title,
                     content = content,
                     isSynced = false
