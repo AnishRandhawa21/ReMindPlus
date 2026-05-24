@@ -19,7 +19,9 @@ interface ReminderDao {
     fun getAllReminders(): Flow<List<ReminderEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertReminder(reminder: ReminderEntity)
+    suspend fun insertReminder(
+        reminder: ReminderEntity
+    ): Long
 
     @Update
     suspend fun updateReminder(reminder: ReminderEntity)

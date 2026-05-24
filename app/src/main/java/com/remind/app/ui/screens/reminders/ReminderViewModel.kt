@@ -8,7 +8,8 @@ import com.remind.app.data.repository.ReminderRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-
+import android.content.Context
+import com.remind.app.utils.AlarmScheduler
 class ReminderViewModel(
     private val repository: ReminderRepository
 ) : ViewModel() {
@@ -59,23 +60,50 @@ class ReminderViewModel(
     }
 
     fun addReminder(
+        context: Context,
         title: String,
         description: String,
         dueTime: Long?
-    ) {
+    ){
 
         if (title.isBlank()) return
 
         viewModelScope.launch {
 
-            repository.insertReminder(
-                ReminderEntity(
-                    title = title,
-                    description = description,
-                    dueTime = dueTime,
-                    isSynced = false
-                )
+            val reminder = ReminderEntity(
+
+                title = title,
+
+                description = description,
+
+                dueTime = dueTime,
+
+                isSynced = false
             )
+
+            repository.insertReminder(reminder)
+
+            if (dueTime != null) {
+
+                AlarmScheduler.scheduleReminder(
+
+                    context = context,
+
+                    reminderId = reminder.id.hashCode(),
+
+                    title = title,
+
+                    message = if (
+                        description.isBlank()
+                    ) {
+                        "You have a reminder"
+                    } else {
+                        description
+                    },
+
+                    triggerTime = dueTime
+                )
+            }
         }
     }
     fun togglePinnedReminder(
@@ -111,9 +139,19 @@ class ReminderViewModel(
         }
     }
 
-    fun deleteReminder(reminder: ReminderEntity) {
+    fun deleteReminder(
 
+        context: Context,
+
+        reminder: ReminderEntity
+    ) {
         viewModelScope.launch {
+
+            AlarmScheduler.cancelReminder(
+                context = context,
+                reminderId = reminder.id.hashCode()
+            )
+
             repository.deleteReminder(reminder)
         }
     }

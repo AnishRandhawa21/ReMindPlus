@@ -31,7 +31,7 @@ import com.remind.app.ui.theme.*
 import com.remind.app.utils.DateUtils
 import java.text.SimpleDateFormat
 import java.util.*
-
+import androidx.compose.ui.platform.LocalContext
 // ── Palette lists (pastel card backgrounds – fine on both themes) ─────────────
 
 private val quickNoteColors = listOf(
@@ -89,6 +89,8 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
 
     val quickNotes         by viewModel.quickNotes.collectAsState()
     val scheduledReminders by viewModel.scheduledReminders.collectAsState()
+
+    val context = LocalContext.current
 
     var showAddDialog   by remember { mutableStateOf(false) }
     var editingReminder by remember { mutableStateOf<ReminderEntity?>(null) }
@@ -241,7 +243,10 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
                                         menuReminder = null
                                     },
                                     onDelete = {
-                                        viewModel.deleteReminder(note)
+                                        viewModel.deleteReminder(
+                                            context,
+                                            note
+                                        )
                                         menuReminder = null
                                     }
                                 )
@@ -302,7 +307,7 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
                                     timeLabel      = timeLabel,
                                     reminders      = timeReminders,
                                     onTogglePin    = { r -> viewModel.togglePinnedReminder(r) },
-                                    onDelete       = { r -> viewModel.deleteReminder(r) },
+                                    onDelete       = { r -> viewModel.deleteReminder(context, r) },
                                     onToggleComplete = { r -> viewModel.toggleReminderCompleted(r) },
                                     onClick        = { r -> editingReminder = r }
                                 )
@@ -334,7 +339,7 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
             selectedDayCalendar = selectedChip.fullDate,
             onDismiss = { showAddDialog = false },
             onSave    = { title, desc, dueTime ->
-                viewModel.addReminder(title, desc, dueTime)
+                viewModel.addReminder(context,title, desc, dueTime)
                 showAddDialog = false
             }
         )
