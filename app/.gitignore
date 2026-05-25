@@ -1,1 +1,21 @@
+# Gradle
+.gradle/
+
+# Local config
+local.properties
+
+# Build folders
 /build
+/app/build/
+
+# Release artifacts
+/app/release/
+
+# IDE
+.idea/
+*.iml
+
+# Generated files
+captures/
+.externalNativeBuild/
+.cxx/
