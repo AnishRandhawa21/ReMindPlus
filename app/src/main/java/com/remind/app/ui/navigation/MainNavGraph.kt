@@ -10,19 +10,25 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import com.remind.app.data.remote.AuthManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.compose.ui.platform.LocalContext
 import com.remind.app.data.local.DatabaseProvider
+import com.remind.app.data.remote.AuthManager
+import com.remind.app.data.remote.SyncManager
 import com.remind.app.data.repository.NoteRepository
 import com.remind.app.data.repository.ReminderRepository
+import com.remind.app.ui.animation.defaultEnterTransition
+import com.remind.app.ui.animation.defaultExitTransition
+import com.remind.app.ui.animation.tabEnterTransition
+import com.remind.app.ui.animation.tabExitTransition
+import com.remind.app.ui.animation.targetTabIsToTheRight
 import com.remind.app.ui.screens.notes.NoteEditorScreen
-import com.remind.app.ui.screens.notes.NotesScreen
 import com.remind.app.ui.screens.notes.NoteViewModel
 import com.remind.app.ui.screens.notes.NoteViewModelFactory
+import com.remind.app.ui.screens.notes.NotesScreen
 import com.remind.app.ui.screens.reminders.ReminderScreen
 import com.remind.app.ui.screens.reminders.ReminderViewModel
 import com.remind.app.ui.screens.reminders.ReminderViewModelFactory
@@ -30,7 +36,6 @@ import com.remind.app.ui.screens.settings.SettingsScreen
 import com.remind.app.ui.screens.settings.SettingsViewModel
 import com.remind.app.ui.screens.settings.SettingsViewModelFactory
 import com.remind.app.ui.screens.stats.StatsScreen
-import com.remind.app.data.remote.SyncManager
 import com.remind.app.utils.PreferenceManager
 
 @Composable
@@ -39,79 +44,73 @@ fun MainNavGraph(
     paddingValues: PaddingValues,
     showBottomBar: Boolean = true
 ) {
-    val context        = LocalContext.current
-    val database       = DatabaseProvider.getDatabase(context)
-    val authManager = AuthManager(context)
+    val context           = LocalContext.current
+    val database          = DatabaseProvider.getDatabase(context)
+    val authManager       = AuthManager(context)
     val preferenceManager = remember { PreferenceManager(context) }
 
-    val reminderRepo   = ReminderRepository(database.reminderDao(),authManager)
-    
-    val noteRepo = NoteRepository(
-        database.noteDao(),
-        authManager
-    )
-
-    val syncManager = remember {
-        SyncManager(
-            reminderRepo,
-            noteRepo
-        )
-    }
+    val reminderRepo = ReminderRepository(database.reminderDao(), authManager)
+    val noteRepo     = NoteRepository(database.noteDao(), authManager)
+    val syncManager  = remember { SyncManager(reminderRepo, noteRepo) }
 
     val viewModel: ReminderViewModel = viewModel(
-        factory = ReminderViewModelFactory(
-            reminderRepo,
-            authManager,
-            syncManager,
-            preferenceManager
-        )
+        factory = ReminderViewModelFactory(reminderRepo, authManager, syncManager, preferenceManager)
     )
-
     val noteViewModel: NoteViewModel = viewModel(
-        factory = NoteViewModelFactory(
-            noteRepo,
-            authManager,
-            syncManager,
-            preferenceManager
-        )
+        factory = NoteViewModelFactory(noteRepo, authManager, syncManager, preferenceManager)
     )
-
-    val regularModifier = Modifier.padding(paddingValues)
-    val editorModifier  = Modifier   // no bottom padding; editor uses imePadding()
 
     LaunchedEffect(Unit) {
         if (preferenceManager.autoSync) {
-            try {
+            runCatching {
                 syncManager.pushReminders()
                 syncManager.pullReminders()
                 syncManager.pushNotes()
                 syncManager.pullNotes()
-            } catch (e: Exception) {
-                e.printStackTrace()
             }
         }
     }
 
     NavHost(
-        navController    = navController,
-        startDestination = Routes.REMINDERS,
-        // Apply padding at NavHost level only for non-editor routes
-        modifier         = if (showBottomBar) regularModifier else editorModifier
+        navController       = navController,
+        startDestination    = Routes.REMINDERS,
+        modifier            = if (showBottomBar) Modifier.padding(paddingValues) else Modifier,
+        enterTransition     = { defaultEnterTransition },
+        exitTransition      = { defaultExitTransition  },
+        popEnterTransition  = { defaultEnterTransition },
+        popExitTransition   = { defaultExitTransition  }
     ) {
 
-        composable(Routes.REMINDERS) {
+        // ── REMINDERS ────────────────────────────────────────────────────────
+        composable(
+            route               = Routes.REMINDERS,
+            enterTransition     = { targetTabIsToTheRight()?.let { tabEnterTransition(it) } ?: defaultEnterTransition },
+            exitTransition      = { targetTabIsToTheRight()?.let { tabExitTransition(it)  } ?: defaultExitTransition  },
+            popEnterTransition  = { targetTabIsToTheRight()?.let { tabEnterTransition(it) } ?: defaultEnterTransition },
+            popExitTransition   = { targetTabIsToTheRight()?.let { tabExitTransition(it)  } ?: defaultExitTransition  }
+        ) {
             ReminderScreen(viewModel)
         }
 
-        composable(Routes.NOTES) {
-            NotesScreen(
-                navController = navController,
-                viewModel     = noteViewModel
-            )
+        // ── NOTES ─────────────────────────────────────────────────────────────
+        composable(
+            route               = Routes.NOTES,
+            enterTransition     = { targetTabIsToTheRight()?.let { tabEnterTransition(it) } ?: defaultEnterTransition },
+            exitTransition      = { targetTabIsToTheRight()?.let { tabExitTransition(it)  } ?: defaultExitTransition  },
+            popEnterTransition  = { targetTabIsToTheRight()?.let { tabEnterTransition(it) } ?: defaultEnterTransition },
+            popExitTransition   = { targetTabIsToTheRight()?.let { tabExitTransition(it)  } ?: defaultExitTransition  }
+        ) {
+            NotesScreen(navController = navController, viewModel = noteViewModel)
         }
 
-        // New note
-        composable(Routes.NOTE_EDITOR) {
+        // ── NOTE EDITOR — new ─────────────────────────────────────────────────
+        composable(
+            route               = Routes.NOTE_EDITOR,
+            enterTransition     = { defaultEnterTransition },
+            exitTransition      = { defaultExitTransition  },
+            popEnterTransition  = { defaultEnterTransition },
+            popExitTransition   = { defaultExitTransition  }
+        ) {
             NoteEditorScreen(
                 onBack = { navController.popBackStack() },
                 onSave = { title, content ->
@@ -121,55 +120,60 @@ fun MainNavGraph(
             )
         }
 
-        // Edit existing note
-        composable(Routes.NOTE_EDITOR_WITH_ID) { backStackEntry ->
-            val noteId = backStackEntry.arguments
-                ?.getString("noteId")
-
-            var note by remember {
-                mutableStateOf<com.remind.app.data.local.entity.NoteEntity?>(null)
-            }
-
+        // ── NOTE EDITOR — edit existing ───────────────────────────────────────
+        composable(
+            route               = Routes.NOTE_EDITOR_WITH_ID,
+            enterTransition     = { defaultEnterTransition },
+            exitTransition      = { defaultExitTransition  },
+            popEnterTransition  = { defaultEnterTransition },
+            popExitTransition   = { defaultExitTransition  }
+        ) { backStackEntry ->
+            val noteId = backStackEntry.arguments?.getString("noteId")
+            var note by remember { mutableStateOf<com.remind.app.data.local.entity.NoteEntity?>(null) }
             LaunchedEffect(noteId) {
-                if (noteId != null) {
-                    note = noteViewModel.getNoteById(noteId)
-                }
+                if (noteId != null) note = noteViewModel.getNoteById(noteId)
             }
-
             note?.let { existingNote ->
                 NoteEditorScreen(
                     initialTitle   = existingNote.title,
                     initialContent = existingNote.content,
                     onBack = { navController.popBackStack() },
                     onSave = { title, content ->
-                        noteViewModel.updateNote(
-                            note    = existingNote,
-                            title   = title,
-                            content = content
-                        )
+                        noteViewModel.updateNote(existingNote, title, content)
                         navController.popBackStack()
                     }
                 )
             }
         }
 
-        composable(Routes.STATS) {
+        // ── STATS ─────────────────────────────────────────────────────────────
+        composable(
+            route               = Routes.STATS,
+            enterTransition     = { targetTabIsToTheRight()?.let { tabEnterTransition(it) } ?: defaultEnterTransition },
+            exitTransition      = { targetTabIsToTheRight()?.let { tabExitTransition(it)  } ?: defaultExitTransition  },
+            popEnterTransition  = { targetTabIsToTheRight()?.let { tabEnterTransition(it) } ?: defaultEnterTransition },
+            popExitTransition   = { targetTabIsToTheRight()?.let { tabExitTransition(it)  } ?: defaultExitTransition  }
+        ) {
             StatsScreen()
         }
 
-        composable(Routes.SETTINGS) {
+        // ── SETTINGS ──────────────────────────────────────────────────────────
+        composable(
+            route               = Routes.SETTINGS,
+            enterTransition     = { targetTabIsToTheRight()?.let { tabEnterTransition(it) } ?: defaultEnterTransition },
+            exitTransition      = { targetTabIsToTheRight()?.let { tabExitTransition(it)  } ?: defaultExitTransition  },
+            popEnterTransition  = { targetTabIsToTheRight()?.let { tabEnterTransition(it) } ?: defaultEnterTransition },
+            popExitTransition   = { targetTabIsToTheRight()?.let { tabExitTransition(it)  } ?: defaultExitTransition  }
+        ) {
             val settingsViewModel: SettingsViewModel = viewModel(
                 factory = SettingsViewModelFactory(
-                    application = context.applicationContext as Application,
+                    application        = context.applicationContext as Application,
                     reminderRepository = reminderRepo,
-                    noteRepository = noteRepo,
-                    syncManager = syncManager
+                    noteRepository     = noteRepo,
+                    syncManager        = syncManager
                 )
             )
-
-            SettingsScreen(
-                viewModel = settingsViewModel
-            )
+            SettingsScreen(viewModel = settingsViewModel)
         }
     }
 }
