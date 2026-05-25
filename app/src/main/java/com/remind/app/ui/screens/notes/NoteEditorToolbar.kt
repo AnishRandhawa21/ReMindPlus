@@ -12,12 +12,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.outlined.AutoFixNormal
+import androidx.compose.material.icons.outlined.Brush         // highlighter icon
 import androidx.compose.material.icons.outlined.Create
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.FormatListBulleted
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Undo
-import androidx.compose.material.icons.outlined.AutoFixNormal   // eraser
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,7 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Root toolbar — animates between TEXT and DRAW modes
+// Root toolbar — animates between TEXT, HIGHLIGHT, and DRAW modes
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
@@ -40,7 +41,9 @@ fun NoteEditorToolbar(
     drawState         : DrawState,
     onInsert          : (String) -> Unit,
     onToggleChecklist : () -> Unit,
-    onEnterDraw       : () -> Unit,
+    onEnterHighlight  : () -> Unit,          // 🖍️ quick highlight
+    onExitHighlight   : () -> Unit,          // exits highlight back to TEXT
+    onEnterDraw       : () -> Unit,          // ✏️ full draw mode
     onExitDraw        : () -> Unit,
     onDrawTool        : (DrawTool) -> Unit,
     onUndo            : () -> Unit,
@@ -61,13 +64,32 @@ fun NoteEditorToolbar(
             label = "toolbar_transition"
         ) { targetMode ->
             when (targetMode) {
+
                 EditorMode.TEXT -> TextModeToolbar(
                     surfaceVar        = surfaceVar,
                     outline           = outline,
+                    isHighlightActive = false,
                     onInsert          = onInsert,
                     onToggleChecklist = onToggleChecklist,
+                    onEnterHighlight  = onEnterHighlight,
+                    onExitHighlight   = onExitHighlight,
                     onEnterDraw       = onEnterDraw,
                 )
+
+                // Highlight mode reuses the TEXT toolbar layout but marks the
+                // highlighter button as active. This intentionally avoids
+                // switching to the full DRAW toolbar.
+                EditorMode.HIGHLIGHT -> TextModeToolbar(
+                    surfaceVar        = surfaceVar,
+                    outline           = outline,
+                    isHighlightActive = true,
+                    onInsert          = onInsert,
+                    onToggleChecklist = onToggleChecklist,
+                    onEnterHighlight  = onEnterHighlight,
+                    onExitHighlight   = onExitHighlight,
+                    onEnterDraw       = onEnterDraw,
+                )
+
                 EditorMode.DRAW -> DrawModeToolbar(
                     drawState     = drawState,
                     surfaceVar    = surfaceVar,
@@ -84,15 +106,25 @@ fun NoteEditorToolbar(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TEXT MODE toolbar
+// TEXT / HIGHLIGHT MODE toolbar
+//
+// Layout:  •  –  ☑  🖍️  ✏️
+//           ^list  ^cb  ^hl  ^draw
+//
+// 🖍️ (Brush icon) = quick highlighter. Tapping it toggles HIGHLIGHT mode.
+//    The toolbar does NOT switch to the full DRAW toolbar.
+// ✏️ (Create icon) = enters full DRAW mode.
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun TextModeToolbar(
     surfaceVar        : Color,
     outline           : Color,
+    isHighlightActive : Boolean,
     onInsert          : (String) -> Unit,
     onToggleChecklist : () -> Unit,
+    onEnterHighlight  : () -> Unit,
+    onExitHighlight   : () -> Unit,
     onEnterDraw       : () -> Unit,
 ) {
     Row(
@@ -105,7 +137,7 @@ private fun TextModeToolbar(
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment     = Alignment.CenterVertically
     ) {
-        // Bullet list
+        // ── Bullet list ─────────────────────────────────────────────────────
         IconToolButton(
             icon               = Icons.Outlined.FormatListBulleted,
             contentDescription = "Insert bullet",
@@ -113,7 +145,7 @@ private fun TextModeToolbar(
         )
         ToolbarDivider(outline)
 
-        // Dash / horizontal rule
+        // ── Dash ────────────────────────────────────────────────────────────
         IconToolButton(
             icon               = Icons.Outlined.Remove,
             contentDescription = "Insert dash",
@@ -121,7 +153,7 @@ private fun TextModeToolbar(
         )
         ToolbarDivider(outline)
 
-        // Checklist
+        // ── Checklist ───────────────────────────────────────────────────────
         IconButton(
             onClick  = onToggleChecklist,
             modifier = Modifier.size(48.dp)
@@ -135,7 +167,21 @@ private fun TextModeToolbar(
         }
         ToolbarDivider(outline)
 
-        // Enter draw mode
+        // ── Quick Highlighter 🖍️ ─────────────────────────────────────────────
+        // Uses Icons.Outlined.Brush as the closest built-in highlighter icon.
+        // When active the button glows amber to signal highlight mode.
+        IconToolButton(
+            icon               = Icons.Outlined.Brush,
+            contentDescription = if (isHighlightActive) "Exit highlight mode" else "Highlight mode",
+            isActive           = isHighlightActive,
+            activeColor        = Color(0xFFFFC107),   // amber — distinct from primary
+            onClick            = {
+                if (isHighlightActive) onExitHighlight() else onEnterHighlight()
+            }
+        )
+        ToolbarDivider(outline)
+
+        // ── Full draw mode ✏️ ────────────────────────────────────────────────
         IconToolButton(
             icon               = Icons.Outlined.Create,
             contentDescription = "Enter draw mode",
@@ -145,7 +191,7 @@ private fun TextModeToolbar(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DRAW MODE toolbar
+// DRAW MODE toolbar — unchanged from original except kept in sync with new sig
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
@@ -198,14 +244,13 @@ private fun DrawModeToolbar(
             horizontalArrangement = Arrangement.spacedBy(2.dp),
             verticalAlignment     = Alignment.CenterVertically
         ) {
-            // Undo
             IconToolButton(
                 icon               = Icons.Outlined.Undo,
                 contentDescription = "Undo",
                 onClick            = onUndo
             )
 
-            // Color swatch button
+            // Color swatch
             Box(
                 modifier = Modifier
                     .size(48.dp)
@@ -229,7 +274,7 @@ private fun DrawModeToolbar(
                 )
             }
 
-            // Stroke thickness preview button
+            // Stroke thickness preview
             StrokeThicknessButton(
                 strokeWidth = drawState.strokeWidth,
                 color       = drawState.strokeColor,
@@ -239,7 +284,7 @@ private fun DrawModeToolbar(
 
         ToolbarDivider(outline)
 
-        // Right: exit draw mode (Done ✓)
+        // Right: Done ✓
         Box(
             modifier = Modifier
                 .size(48.dp)
@@ -267,16 +312,11 @@ private fun DrawModeToolbar(
         }
     }
 
-    // ── Popups ────────────────────────────────────────────────────────────────
-
     if (showColorPicker) {
         ColorPickerDialog(
             currentColor    = drawState.strokeColor,
-            onColorSelected = {
-                onColorPick(it)
-                showColorPicker = false
-            },
-            onDismiss = { showColorPicker = false }
+            onColorSelected = { onColorPick(it); showColorPicker = false },
+            onDismiss       = { showColorPicker = false }
         )
     }
 
@@ -284,25 +324,22 @@ private fun DrawModeToolbar(
         StrokePickerDialog(
             currentWidth    = drawState.strokeWidth,
             strokeColor     = drawState.strokeColor,
-            onWidthSelected = {
-                onStrokeWidth(it)
-                showStrokePicker = false
-            },
-            onDismiss = { showStrokePicker = false }
+            onWidthSelected = { onStrokeWidth(it); showStrokePicker = false },
+            onDismiss       = { showStrokePicker = false }
         )
     }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Color Picker Dialog — 12-swatch palette
+// Color Picker Dialog
 // ─────────────────────────────────────────────────────────────────────────────
 
-// First swatch adapts to theme: white in dark mode, black in light mode.
 @Composable
 private fun palette(): List<Color> {
     val inkColor = MaterialTheme.colorScheme.onBackground
     return listOf(
-        inkColor,              Color(0xFF212121), Color(0xFF616161),
+        inkColor,
+        Color(0xFF212121), Color(0xFF616161),
         Color(0xFFBDBDBD), Color(0xFFEF5350), Color(0xFFE91E63),
         Color(0xFF9C27B0), Color(0xFF3F51B5), Color(0xFF2196F3),
         Color(0xFF009688), Color(0xFF4CAF50), Color(0xFFFF9800),
@@ -363,7 +400,7 @@ private fun ColorPickerDialog(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Stroke Picker Dialog — 4 preset sizes
+// Stroke Picker Dialog
 // ─────────────────────────────────────────────────────────────────────────────
 
 private val STROKE_SIZES = listOf(4f to 3.dp, 8f to 5.dp, 14f to 8.dp, 22f to 12.dp)
@@ -464,18 +501,26 @@ private fun StrokeThicknessButton(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * A tappable toolbar button that shows a Material icon.
- * Highlights with a tinted container when [isActive] is true.
+ * Tappable toolbar button.
+ *
+ * [activeColor] lets callers override the default primary highlight for special
+ * tools (e.g. the amber glow for the highlighter button).
  */
 @Composable
 internal fun IconToolButton(
     icon               : ImageVector,
     contentDescription : String,
     isActive           : Boolean = false,
+    activeColor        : Color   = Color.Unspecified,  // defaults to primary when Unspecified
     onClick            : () -> Unit,
 ) {
+    val resolvedActive = if (activeColor == Color.Unspecified)
+        MaterialTheme.colorScheme.primary
+    else
+        activeColor
+
     val containerColor = if (isActive)
-        MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+        resolvedActive.copy(alpha = 0.18f)
     else
         Color.Transparent
 
@@ -494,24 +539,20 @@ internal fun IconToolButton(
         Icon(
             imageVector        = icon,
             contentDescription = contentDescription,
-            tint               = if (isActive)
-                MaterialTheme.colorScheme.primary
-            else
-                MaterialTheme.colorScheme.onSurface,
+            tint = if (isActive) resolvedActive
+            else MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.size(20.dp)
         )
     }
 }
 
-/** Kept for source compatibility — wraps [IconToolButton] for callers that already pass a label string. */
+/** Kept for source compatibility. */
 @Composable
 internal fun FormatToolButton(
     label    : String,
     isActive : Boolean = false,
     onClick  : () -> Unit,
 ) {
-    // Fallback: render as a plain text button (should not be reached in normal use
-    // now that all callers use IconToolButton directly).
     TextButton(
         onClick        = onClick,
         modifier       = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 40.dp),
