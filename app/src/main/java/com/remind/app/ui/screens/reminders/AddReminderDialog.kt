@@ -20,6 +20,7 @@ import com.remind.app.data.local.entity.ReminderEntity
 import java.text.SimpleDateFormat
 import java.util.*
 import com.remind.app.ui.theme.*
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,52 +72,37 @@ fun AddReminderBottomSheet(
     fun buildDueTime(): Long? {
         if (!timeChosen) return null
         val selectedCal = Calendar.getInstance()
-        selectedDateMillis?.let {
-            selectedCal.timeInMillis = it
-        }
+        selectedDateMillis?.let { selectedCal.timeInMillis = it }
         val finalCal = Calendar.getInstance().apply {
-            set(
-                Calendar.YEAR,
-                selectedCal.get(Calendar.YEAR)
-            )
-            set(
-                Calendar.MONTH,
-                selectedCal.get(Calendar.MONTH)
-            )
-            set(
-                Calendar.DAY_OF_MONTH,
-                selectedCal.get(Calendar.DAY_OF_MONTH)
-            )
-            set(
-                Calendar.HOUR_OF_DAY,
-                pickedHour
-            )
-            set(
-                Calendar.MINUTE,
-                pickedMinute
-            )
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
+            set(Calendar.YEAR,         selectedCal.get(Calendar.YEAR))
+            set(Calendar.MONTH,        selectedCal.get(Calendar.MONTH))
+            set(Calendar.DAY_OF_MONTH, selectedCal.get(Calendar.DAY_OF_MONTH))
+            set(Calendar.HOUR_OF_DAY,  pickedHour)
+            set(Calendar.MINUTE,       pickedMinute)
+            set(Calendar.SECOND,       0)
+            set(Calendar.MILLISECOND,  0)
         }
         return finalCal.timeInMillis
     }
 
     val isEditing = reminder != null
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    // ── Sheet state + coroutine scope for sequenced animation ─────────────────
+    val sheetState    = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope         = rememberCoroutineScope()
     val focusRequester = remember { FocusRequester() }
 
-    // Theme-consistent colors from your Theme.kt
-    val bgColor = MaterialTheme.colorScheme.background
+    val bgColor        = MaterialTheme.colorScheme.background
     val contentBoxColor = MaterialTheme.colorScheme.surface
-    val onBg = MaterialTheme.colorScheme.onBackground
-    val secondaryText = MaterialTheme.colorScheme.onSurfaceVariant
-    val accentColor = PastelBlue
+    val onBg           = MaterialTheme.colorScheme.onBackground
+    val secondaryText  = MaterialTheme.colorScheme.onSurfaceVariant
+    val accentColor    = PastelBlue
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        dragHandle = null,
-        containerColor = bgColor,
+        sheetState       = sheetState,
+        dragHandle       = null,
+        containerColor   = bgColor
     ) {
         Column(
             modifier = Modifier
@@ -125,38 +111,38 @@ fun AddReminderBottomSheet(
                 .imePadding()
                 .padding(bottom = 20.dp)
         ) {
-            // Header
+            // ── Header ────────────────────────────────────────────────────────
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment     = Alignment.CenterVertically
             ) {
                 TextButton(onClick = onDismiss) {
                     Text("Cancel", color = accentColor, fontSize = 17.sp)
                 }
                 Text(
-                    text = if (isEditing) "Edit Reminder" else "New Reminder",
+                    text  = if (isEditing) "Edit Reminder" else "New Reminder",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
                     color = onBg
                 )
                 TextButton(
-                    onClick = { onSave(title.trim(), description.trim(), buildDueTime()) },
-                    enabled = title.isNotBlank()
+                    onClick  = { onSave(title.trim(), description.trim(), buildDueTime()) },
+                    enabled  = title.isNotBlank()
                 ) {
                     Text(
-                        text = "Save",
-                        color = if (title.isNotBlank()) accentColor else secondaryText.copy(alpha = 0.5f),
+                        text       = "Save",
+                        color      = if (title.isNotBlank()) accentColor else secondaryText.copy(alpha = 0.5f),
                         fontWeight = FontWeight.Bold,
-                        fontSize = 17.sp
+                        fontSize   = 17.sp
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Main Input Container
+            // ── Main Input Container ──────────────────────────────────────────
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -166,107 +152,104 @@ fun AddReminderBottomSheet(
                     .padding(vertical = 4.dp)
             ) {
                 TextField(
-                    value = title,
+                    value         = title,
                     onValueChange = { title = it },
-                    placeholder = { 
+                    placeholder   = {
                         Text(
-                            "Reminder title", 
+                            "Reminder title",
                             color = secondaryText.copy(alpha = 0.5f),
                             style = MaterialTheme.typography.bodyLarge
-                        ) 
+                        )
                     },
-                    modifier = Modifier
+                    modifier  = Modifier
                         .fillMaxWidth()
                         .focusRequester(focusRequester),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent,
+                    colors    = TextFieldDefaults.colors(
+                        focusedContainerColor   = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent,
+                        focusedIndicatorColor   = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
-                        cursorColor = accentColor,
-                        focusedTextColor = onBg,
-                        unfocusedTextColor = onBg
+                        cursorColor             = accentColor,
+                        focusedTextColor        = onBg,
+                        unfocusedTextColor      = onBg
                     ),
                     textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
                     singleLine = true
                 )
-                
+
                 HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 16.dp),
+                    modifier  = Modifier.padding(horizontal = 16.dp),
                     thickness = 0.5.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                    color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
                 )
 
                 TextField(
-                    value = description,
+                    value         = description,
                     onValueChange = { description = it },
-                    placeholder = { 
+                    placeholder   = {
                         Text(
-                            "Add a description...", 
+                            "Add a description...",
                             color = secondaryText.copy(alpha = 0.5f),
                             style = MaterialTheme.typography.bodyMedium
-                        ) 
+                        )
                     },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent,
+                    modifier  = Modifier.fillMaxWidth(),
+                    colors    = TextFieldDefaults.colors(
+                        focusedContainerColor   = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent,
+                        focusedIndicatorColor   = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
-                        cursorColor = accentColor,
-                        focusedTextColor = onBg,
-                        unfocusedTextColor = onBg
+                        cursorColor             = accentColor,
+                        focusedTextColor        = onBg,
+                        unfocusedTextColor      = onBg
                     ),
                     textStyle = MaterialTheme.typography.bodyMedium,
-                    maxLines = 3
+                    maxLines  = 3
                 )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Status row
+            // ── Status row ────────────────────────────────────────────────────
             Row(
-                modifier = Modifier
+                modifier          = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(
-                    onClick = { showTimePicker = true },
+                    onClick  = { showTimePicker = true },
                     modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Notifications,
+                        imageVector        = Icons.Outlined.Notifications,
                         contentDescription = "Set Reminder",
-                        tint = if (timeChosen) accentColor else secondaryText
+                        tint               = if (timeChosen) accentColor else secondaryText
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.width(8.dp))
 
                 if (timeChosen || selectedDateMillis != initialDueTime) {
                     val display = buildString {
                         formattedDate?.let { append(it) }
-                        if (timeChosen) {
-                            append(" at ")
-                            append(formattedTime)
-                        }
+                        if (timeChosen) { append(" at "); append(formattedTime) }
                     }
                     Surface(
                         onClick = { showTimePicker = true },
-                        color = accentColor.copy(alpha = 0.12f),
-                        shape = RoundedCornerShape(10.dp)
+                        color   = accentColor.copy(alpha = 0.12f),
+                        shape   = RoundedCornerShape(10.dp)
                     ) {
                         Text(
-                            text = display,
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                            color = accentColor,
+                            text     = display,
+                            style    = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color    = accentColor,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                         )
                     }
                 } else {
                     Text(
-                        text = "Quick Note",
+                        text  = "Quick Note",
                         style = MaterialTheme.typography.labelMedium,
                         color = secondaryText.copy(alpha = 0.6f)
                     )
@@ -275,26 +258,31 @@ fun AddReminderBottomSheet(
         }
     }
 
+    // ── Focus after sheet is fully expanded ───────────────────────────────────
+    // Wait for the sheet expand animation to complete, THEN request focus.
+    // This means keyboard animates up WITH the sheet already in position —
+    // no double movement, no jump.
     LaunchedEffect(Unit) {
-        // Coordinated delay to synchronize sheet and keyboard animations
-        kotlinx.coroutines.delay(300)
-        focusRequester.requestFocus()
+        scope.launch {
+            sheetState.expand()       // wait for sheet settle
+            focusRequester.requestFocus() // keyboard now animates once, cleanly
+        }
     }
 
-    // Date Picker
+    // ── Date Picker ───────────────────────────────────────────────────────────
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
             initialSelectedDateMillis = selectedDateMillis
         )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
-            confirmButton = {
+            confirmButton    = {
                 TextButton(onClick = {
                     selectedDateMillis = datePickerState.selectedDateMillis
                     showDatePicker = false
                 }) { Text("OK", color = accentColor, fontWeight = FontWeight.Bold) }
             },
-            dismissButton = {
+            dismissButton    = {
                 TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
             }
         ) {
@@ -302,18 +290,18 @@ fun AddReminderBottomSheet(
         }
     }
 
-    // Time Picker
+    // ── Time Picker ───────────────────────────────────────────────────────────
     if (showTimePicker) {
         val timePickerState = rememberTimePickerState(
-            initialHour = pickedHour,
+            initialHour   = pickedHour,
             initialMinute = pickedMinute
         )
         AlertDialog(
             onDismissRequest = { showTimePicker = false },
-            containerColor = contentBoxColor,
-            shape = RoundedCornerShape(24.dp),
-            text = { TimePicker(state = timePickerState) },
-            confirmButton = {
+            containerColor   = contentBoxColor,
+            shape            = RoundedCornerShape(24.dp),
+            text             = { TimePicker(state = timePickerState) },
+            confirmButton    = {
                 TextButton(onClick = {
                     pickedHour   = timePickerState.hour
                     pickedMinute = timePickerState.minute
@@ -321,7 +309,7 @@ fun AddReminderBottomSheet(
                     showTimePicker = false
                 }) { Text("OK", color = accentColor, fontWeight = FontWeight.Bold) }
             },
-            dismissButton = {
+            dismissButton    = {
                 TextButton(onClick = { showTimePicker = false }) { Text("Cancel") }
             }
         )

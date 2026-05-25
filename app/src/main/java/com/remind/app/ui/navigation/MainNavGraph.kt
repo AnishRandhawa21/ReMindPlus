@@ -37,7 +37,10 @@ import com.remind.app.ui.screens.settings.SettingsViewModel
 import com.remind.app.ui.screens.settings.SettingsViewModelFactory
 import com.remind.app.ui.screens.stats.StatsScreen
 import com.remind.app.utils.PreferenceManager
-
+import com.remind.app.ui.animation.fabExpandEnter
+import com.remind.app.ui.animation.fabCollapseExit
+import com.remind.app.ui.animation.fabPopEnter
+import com.remind.app.ui.animation.fabPopExit
 @Composable
 fun MainNavGraph(
     navController: NavHostController,
@@ -103,13 +106,13 @@ fun MainNavGraph(
             NotesScreen(navController = navController, viewModel = noteViewModel)
         }
 
-        // ── NOTE EDITOR — new ─────────────────────────────────────────────────
+        // ── NOTE EDITOR — new ─────────────────────────────────────────────────────────
         composable(
-            route               = Routes.NOTE_EDITOR,
-            enterTransition     = { defaultEnterTransition },
-            exitTransition      = { defaultExitTransition  },
-            popEnterTransition  = { defaultEnterTransition },
-            popExitTransition   = { defaultExitTransition  }
+            route              = Routes.NOTE_EDITOR,
+            enterTransition    = { fabExpandEnter   },
+            exitTransition     = { fabCollapseExit  },
+            popEnterTransition = { fabPopEnter      },
+            popExitTransition  = { fabPopExit       }
         ) {
             NoteEditorScreen(
                 onBack = { navController.popBackStack() },
@@ -120,13 +123,13 @@ fun MainNavGraph(
             )
         }
 
-        // ── NOTE EDITOR — edit existing ───────────────────────────────────────
+// ── NOTE EDITOR — edit existing ───────────────────────────────────────────────
         composable(
-            route               = Routes.NOTE_EDITOR_WITH_ID,
-            enterTransition     = { defaultEnterTransition },
-            exitTransition      = { defaultExitTransition  },
-            popEnterTransition  = { defaultEnterTransition },
-            popExitTransition   = { defaultExitTransition  }
+            route              = Routes.NOTE_EDITOR_WITH_ID,
+            enterTransition    = { fabExpandEnter   },
+            exitTransition     = { fabCollapseExit  },
+            popEnterTransition = { fabPopEnter      },
+            popExitTransition  = { fabPopExit       }
         ) { backStackEntry ->
             val noteId = backStackEntry.arguments?.getString("noteId")
             var note by remember { mutableStateOf<com.remind.app.data.local.entity.NoteEntity?>(null) }
