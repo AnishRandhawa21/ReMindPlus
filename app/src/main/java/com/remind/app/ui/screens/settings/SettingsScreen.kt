@@ -345,13 +345,13 @@ fun AccountInfoItem(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = email,
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, fontSize = 13.sp),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = "Signed in with Google",
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -402,7 +402,7 @@ fun SyncStatusItem(
                 )
                 Text(
                     text = "Status: $status",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodySmall, fontSize = 12.sp,
                     color = statusColor,
                     maxLines = 2, // Increased to 2 lines
                     overflow = TextOverflow.Ellipsis

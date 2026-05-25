@@ -10,8 +10,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Analytics
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Speed
+import com.remind.app.R
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,7 +29,7 @@ import com.remind.app.utils.DailyUsageInfo
 import com.remind.app.utils.UsagePermissionHelper
 import com.remind.app.utils.UsageStatsHelper
 import java.util.concurrent.TimeUnit
-
+import androidx.compose.ui.res.painterResource
 @Composable
 fun StatsScreen(viewModel: StatsViewModel = viewModel()) {
     val context = LocalContext.current
@@ -485,10 +484,12 @@ fun PermissionRequestView(context: android.content.Context) {
             shape = RoundedCornerShape(24.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.CalendarMonth,
+                painter = painterResource(id = R.drawable.insight),
                 contentDescription = null,
-                modifier = Modifier.padding(24.dp).size(64.dp),
-                tint = MaterialTheme.colorScheme.primary
+                modifier = Modifier
+                    .padding(18.dp)
+                    .size(108.dp),
+                tint = Color.Unspecified
             )
         }
         
@@ -514,7 +515,7 @@ fun PermissionRequestView(context: android.content.Context) {
             modifier = Modifier.height(56.dp).fillMaxWidth(0.7f),
             shape = RoundedCornerShape(16.dp)
         ) {
-            Text("Grant Permission", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text("Enable Insights", fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
     }
 }

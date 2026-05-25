@@ -35,18 +35,12 @@ fun NoteEditorScreen(
     initialTitle: String = "",
     initialContent: String = "",
     onBack: () -> Unit,
-    onSave: (title: String, content: String) -> Unit
+    onSave: (title: String, content: String) -> Unit,
+    paddingValues: PaddingValues = PaddingValues()   // ← receive from parent
 ) {
     var title by remember { mutableStateOf(initialTitle) }
-
-    // Single TextFieldValue for the entire note canvas
     var content by remember {
-        mutableStateOf(
-            TextFieldValue(
-                text      = initialContent,
-                selection = TextRange(initialContent.length)
-            )
-        )
+        mutableStateOf(TextFieldValue(initialContent, TextRange(initialContent.length)))
     }
 
     val bgColor     = MaterialTheme.colorScheme.background
@@ -56,6 +50,8 @@ fun NoteEditorScreen(
     val outline     = MaterialTheme.colorScheme.outlineVariant
 
     var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+    val scrollState = rememberScrollState()
+    val density = LocalDensity.current
 
     // ── Checklist Logic ───────────────────────────────────────────────────────
 
@@ -135,273 +131,253 @@ fun NoteEditorScreen(
 
     // ─────────────────────────────────────────────────────────────────────────
 
-    Scaffold(
-        containerColor      = bgColor,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor             = bgColor,
-                    navigationIconContentColor = onBg,
-                    actionIconContentColor     = onBg
-                ),
-                title = {},
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    val interactionSource = remember { MutableInteractionSource() }
-                    Box(
-                        modifier = Modifier
-                            .padding(end = 16.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.onBackground)
-                            .clickable(
-                                interactionSource = interactionSource,
-                                indication        = null,
-                                onClick           = {
-                                    onSave(title.trim(), content.text.trim())
-                                }
-                            )
-                            .padding(horizontal = 18.dp, vertical = 9.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(
-                            verticalAlignment     = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Check,
-                                contentDescription = "Save",
-                                tint     = MaterialTheme.colorScheme.background,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Text(
-                                text  = "Save",
-                                style = MaterialTheme.typography.labelMedium
-                                    .copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.background
-                            )
-                        }
-                    }
-                }
-            )
-        }
-    ) { paddingValues ->
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(bgColor)
+            .padding(paddingValues)      // ← use parent scaffold's padding
+            .imePadding()
+    ) {
 
-        Column(
+        // ── Top bar (manual, no Scaffold) ─────────────────────────────────
+        Row(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .imePadding()
+                .fillMaxWidth()
+                .height(56.dp)
+                .padding(horizontal = 4.dp),
+            verticalAlignment     = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
+            IconButton(onClick = onBack) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = onBg
+                )
+            }
 
-            // ── Title ─────────────────────────────────────────────────────
-            BasicTextField(
-                value         = title,
-                onValueChange = { title = it },
-                textStyle     = TextStyle(
-                    fontSize   = 24.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color      = onBg,
-                    lineHeight = 30.sp
-                ),
-                cursorBrush   = SolidColor(onBg),
-                singleLine    = true,
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences,
-                    imeAction      = ImeAction.Next
-                ),
+            val interactionSource = remember { MutableInteractionSource() }
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 10.dp),
-                decorationBox = { inner ->
-                    Box {
-                        if (title.isEmpty()) {
-                            Text(
-                                "Title",
-                                style = TextStyle(
-                                    fontSize   = 24.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color      = onBgVariant.copy(alpha = 0.35f)
-                                )
-                            )
-                        }
-                        inner()
-                    }
-                }
-            )
-
-            HorizontalDivider(
-                modifier  = Modifier.padding(horizontal = 20.dp),
-                color     = outline,
-                thickness = 0.5.dp
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            // ── Formatting toolbar ────────────────────────────────────────
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                    .padding(end = 16.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(surfaceVar)
-                    .padding(horizontal = 6.dp, vertical = 2.dp),
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
-                verticalAlignment     = Alignment.CenterVertically
+                    .background(onBg)
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication        = null,
+                        onClick           = { onSave(title.trim(), content.text.trim()) }
+                    )
+                    .padding(horizontal = 18.dp, vertical = 9.dp),
+                contentAlignment = Alignment.Center
             ) {
-                FormatButton("•")  { insertAtCursor("• ") }
-                ToolbarDivider(outline)
-                FormatButton("–")  { insertAtCursor("– ") }
-                ToolbarDivider(outline)
-                // Checklist toggle button
-                IconButton(
-                    onClick = { toggleChecklistAtCursor() },
-                    modifier = Modifier.size(48.dp)
+                Row(
+                    verticalAlignment     = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.RadioButtonUnchecked,
-                        contentDescription = "Checklist",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(20.dp)
+                        Icons.Default.Check,
+                        contentDescription = "Save",
+                        tint     = bgColor,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        text  = "Save",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = bgColor
                     )
                 }
             }
+        }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // ── Canvas — one big text field, full screen ──────────────────
-            val scrollState = rememberScrollState()
-            val density = LocalDensity.current
-
-            BasicTextField(
-                value         = content,
-                onValueChange = { newValue ->
-                    val oldValue = content
-                    val oldText = oldValue.text
-                    val newText = newValue.text
-
-                    // 1. Smart Enter (Newline)
-                    if (newText.length == oldText.length + 1 &&
-                        newValue.selection.start > 0 &&
-                        newText[newValue.selection.start - 1] == '\n'
-                    ) {
-                        val pos = newValue.selection.start - 1
-                        val textBefore = newText.substring(0, pos)
-                        val lineStart = textBefore.lastIndexOf('\n') + 1
-                        val line = textBefore.substring(lineStart)
-
-                        val prefixes = listOf("• ", "– ", "☐ ", "☑ ")
-                        val prefix = prefixes.find { line.startsWith(it) }
-
-                        if (prefix != null) {
-                            if (line.trim() == "•" || line.trim() == "–" || line.trim() == "☐" || line.trim() == "☑") {
-                                // If line was just the prefix, remove it and end list
-                                val updatedText = newText.substring(0, lineStart) + newText.substring(pos + 1)
-                                content = TextFieldValue(updatedText, TextRange(lineStart))
-                                return@BasicTextField
-                            } else {
-                                // Auto-indent: add the same prefix to the new line
-                                // (New lines always start unchecked "☐ ")
-                                val newPrefix = if (prefix.contains("☐") || prefix.contains("☑")) "☐ " else prefix
-                                val updatedText = newText.substring(0, pos + 1) + newPrefix + newText.substring(pos + 1)
-                                content = TextFieldValue(updatedText, TextRange(pos + 1 + newPrefix.length))
-                                return@BasicTextField
-                            }
-                        }
+        // ── Title ─────────────────────────────────────────────────────────
+        BasicTextField(
+            value         = title,
+            onValueChange = { title = it },
+            textStyle = TextStyle(
+                fontSize   = 24.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color      = onBg,
+                lineHeight = 30.sp
+            ),
+            cursorBrush = SolidColor(onBg),
+            singleLine  = true,
+            keyboardOptions = KeyboardOptions(
+                capitalization = KeyboardCapitalization.Sentences,
+                imeAction      = ImeAction.Next
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 10.dp),
+            decorationBox = { inner ->
+                Box {
+                    if (title.isEmpty()) {
+                        Text(
+                            "Title",
+                            style = TextStyle(
+                                fontSize   = 24.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color      = onBgVariant.copy(alpha = 0.35f)
+                            )
+                        )
                     }
+                    inner()
+                }
+            }
+        )
 
-                    // 2. Smart Backspace (remove checklist prefix entirely)
-                    if (newText.length == oldText.length - 1 &&
-                        oldValue.selection.start == newValue.selection.start + 1) {
-                        
-                        val deletedPos = newValue.selection.start
-                        val textBefore = oldText.substring(0, deletedPos + 1)
-                        val lineStart = textBefore.lastIndexOf('\n') + 1
-                        val line = oldText.substring(lineStart)
-                        
-                        if ((line.startsWith("☐ ") || line.startsWith("☑ ")) && (deletedPos - lineStart) < 2) {
-                            val updatedText = oldText.substring(0, lineStart) + oldText.substring(lineStart + 2)
+        HorizontalDivider(
+            modifier  = Modifier.padding(horizontal = 20.dp),
+            color     = outline,
+            thickness = 0.5.dp
+        )
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // ── Formatting toolbar ─────────────────────────────────────────────
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(surfaceVar)
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            verticalAlignment     = Alignment.CenterVertically
+        ) {
+            FormatButton("•") { insertAtCursor("• ") }
+            ToolbarDivider(outline)
+            FormatButton("–") { insertAtCursor("– ") }
+            ToolbarDivider(outline)
+            IconButton(
+                onClick  = { toggleChecklistAtCursor() },
+                modifier = Modifier.size(48.dp)
+            ) {
+                Icon(
+                    imageVector        = Icons.Default.RadioButtonUnchecked,
+                    contentDescription = "Checklist",
+                    tint               = MaterialTheme.colorScheme.onSurface,
+                    modifier           = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // ── Canvas ────────────────────────────────────────────────────────
+        BasicTextField(
+            value         = content,
+            onValueChange = { newValue ->
+                val oldValue = content
+                val oldText = oldValue.text
+                val newText = newValue.text
+
+                // 1. Smart Enter (Newline)
+                if (newText.length == oldText.length + 1 &&
+                    newValue.selection.start > 0 &&
+                    newText[newValue.selection.start - 1] == '\n'
+                ) {
+                    val pos = newValue.selection.start - 1
+                    val textBefore = newText.substring(0, pos)
+                    val lineStart = textBefore.lastIndexOf('\n') + 1
+                    val line = textBefore.substring(lineStart)
+
+                    val prefixes = listOf("• ", "– ", "☐ ", "☑ ")
+                    val prefix = prefixes.find { line.startsWith(it) }
+
+                    if (prefix != null) {
+                        if (line.trim() == "•" || line.trim() == "–" || line.trim() == "☐" || line.trim() == "☑") {
+                            val updatedText = newText.substring(0, lineStart) + newText.substring(pos + 1)
                             content = TextFieldValue(updatedText, TextRange(lineStart))
+                            return@BasicTextField
+                        } else {
+                            val newPrefix = if (prefix.contains("☐") || prefix.contains("☑")) "☐ " else prefix
+                            val updatedText = newText.substring(0, pos + 1) + newPrefix + newText.substring(pos + 1)
+                            content = TextFieldValue(updatedText, TextRange(pos + 1 + newPrefix.length))
                             return@BasicTextField
                         }
                     }
+                }
 
-                    content = newValue
-                },
-                onTextLayout = { textLayoutResult = it },
-                visualTransformation = checklistTransformation,
-                textStyle     = TextStyle(
-                    fontSize   = 16.sp,
-                    color      = onBg,
-                    lineHeight = 24.sp,
-                    fontWeight = FontWeight.Normal
-                ),
-                cursorBrush   = SolidColor(onBg),
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences,
-                    imeAction      = ImeAction.None
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .verticalScroll(scrollState)
-                    .padding(horizontal = 20.dp)
-                    .padding(bottom = 40.dp),
-                decorationBox = { innerTextField ->
-                    Box {
-                        // ── Render Real Checkboxes ──
-                        textLayoutResult?.let { layout ->
-                            val text = content.text
-                            val lines = text.split('\n')
-                            var currentOffset = 0
-                            lines.forEachIndexed { i, line ->
-                                if (line.startsWith("☐ ") || line.startsWith("☑ ")) {
-                                    val lineInLayout = layout.getLineForOffset(currentOffset)
-                                    if (lineInLayout < layout.lineCount) {
-                                        val topPx = layout.getLineTop(lineInLayout)
-                                        val bottomPx = layout.getLineBottom(lineInLayout)
-                                        val lineCenterPx = (topPx + bottomPx) / 2
-                                        
-                                        val centerDp = with(density) { lineCenterPx.toDp() }
-                                        val checkboxSize = 18.dp
+                // 2. Smart Backspace
+                if (newText.length == oldText.length - 1 &&
+                    oldValue.selection.start == newValue.selection.start + 1) {
 
-                                        NoteCheckbox(
-                                            checked = line.startsWith("☑ "),
-                                            onCheckedChange = { toggleLine(i) },
-                                            modifier = Modifier
-                                                .offset(
-                                                    x = 0.dp,
-                                                    y = centerDp - (checkboxSize / 2)
-                                                )
-                                                .size(checkboxSize)
-                                        )
-                                    }
-                                }
-                                currentOffset += line.length + 1
-                            }
-                        }
-                        
-                        // ── The Text ──
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            if (content.text.isEmpty()) {
-                                Text(
-                                    "Start writing...",
-                                    style = TextStyle(
-                                        fontSize = 16.sp,
-                                        color    = onBgVariant.copy(alpha = 0.35f)
-                                    )
-                                )
-                            }
-                            innerTextField()
-                        }
+                    val deletedPos = newValue.selection.start
+                    val textBefore = oldText.substring(0, deletedPos + 1)
+                    val lineStart = textBefore.lastIndexOf('\n') + 1
+                    val line = oldText.substring(lineStart)
+
+                    if ((line.startsWith("☐ ") || line.startsWith("☑ ")) && (deletedPos - lineStart) < 2) {
+                        val updatedText = oldText.substring(0, lineStart) + oldText.substring(lineStart + 2)
+                        content = TextFieldValue(updatedText, TextRange(lineStart))
+                        return@BasicTextField
                     }
                 }
-            )
-        }
+
+                content = newValue
+            },
+            onTextLayout            = { textLayoutResult = it },
+            visualTransformation    = checklistTransformation,
+            textStyle = TextStyle(
+                fontSize   = 16.sp,
+                color      = onBg,
+                lineHeight = 24.sp,
+                fontWeight = FontWeight.Normal
+            ),
+            cursorBrush = SolidColor(onBg),
+            keyboardOptions = KeyboardOptions(
+                capitalization = KeyboardCapitalization.Sentences,
+                imeAction      = ImeAction.None
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(scrollState)
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 40.dp),
+            decorationBox = { innerTextField ->
+                Box {
+                    textLayoutResult?.let { layout ->
+                        val text = content.text
+                        val lines = text.split('\n')
+                        var currentOffset = 0
+                        lines.forEachIndexed { i, line ->
+                            if (line.startsWith("☐ ") || line.startsWith("☑ ")) {
+                                val lineInLayout = layout.getLineForOffset(currentOffset)
+                                if (lineInLayout < layout.lineCount) {
+                                    val topPx = layout.getLineTop(lineInLayout)
+                                    val bottomPx = layout.getLineBottom(lineInLayout)
+                                    val lineCenterPx = (topPx + bottomPx) / 2
+                                    val centerDp = with(density) { lineCenterPx.toDp() }
+                                    val checkboxSize = 18.dp
+
+                                    NoteCheckbox(
+                                        checked = line.startsWith("☑ "),
+                                        onCheckedChange = { toggleLine(i) },
+                                        modifier = Modifier
+                                            .offset(x = 0.dp, y = centerDp - (checkboxSize / 2))
+                                            .size(checkboxSize)
+                                    )
+                                }
+                            }
+                            currentOffset += line.length + 1
+                        }
+                    }
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        if (content.text.isEmpty()) {
+                            Text(
+                                "Start writing...",
+                                style = TextStyle(
+                                    fontSize = 16.sp,
+                                    color    = onBgVariant.copy(alpha = 0.35f)
+                                )
+                            )
+                        }
+                        innerTextField()
+                    }
+                }
+            }
+        )
     }
 }
 

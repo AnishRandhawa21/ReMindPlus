@@ -16,6 +16,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.remind.app.data.local.DatabaseProvider
+import com.remind.app.data.local.entity.NoteEntity
 import com.remind.app.data.remote.AuthManager
 import com.remind.app.data.remote.SyncManager
 import com.remind.app.data.repository.NoteRepository
@@ -106,15 +107,16 @@ fun MainNavGraph(
             NotesScreen(navController = navController, viewModel = noteViewModel)
         }
 
-        // ── NOTE EDITOR — new ─────────────────────────────────────────────────────────
+        // In MainNavGraph — new note
         composable(
             route              = Routes.NOTE_EDITOR,
-            enterTransition    = { fabExpandEnter   },
-            exitTransition     = { fabCollapseExit  },
-            popEnterTransition = { fabPopEnter      },
-            popExitTransition  = { fabPopExit       }
+            enterTransition    = { fabExpandEnter  },
+            exitTransition     = { fabCollapseExit },
+            popEnterTransition = { fabPopEnter     },
+            popExitTransition  = { fabPopExit      }
         ) {
             NoteEditorScreen(
+                paddingValues = paddingValues,   // ← from MainNavGraph's parameter
                 onBack = { navController.popBackStack() },
                 onSave = { title, content ->
                     noteViewModel.addNote(title = title, content = content)
@@ -123,21 +125,22 @@ fun MainNavGraph(
             )
         }
 
-// ── NOTE EDITOR — edit existing ───────────────────────────────────────────────
+// In MainNavGraph — edit existing
         composable(
             route              = Routes.NOTE_EDITOR_WITH_ID,
-            enterTransition    = { fabExpandEnter   },
-            exitTransition     = { fabCollapseExit  },
-            popEnterTransition = { fabPopEnter      },
-            popExitTransition  = { fabPopExit       }
+            enterTransition    = { fabExpandEnter  },
+            exitTransition     = { fabCollapseExit },
+            popEnterTransition = { fabPopEnter     },
+            popExitTransition  = { fabPopExit      }
         ) { backStackEntry ->
             val noteId = backStackEntry.arguments?.getString("noteId")
-            var note by remember { mutableStateOf<com.remind.app.data.local.entity.NoteEntity?>(null) }
+            var note by remember { mutableStateOf<NoteEntity?>(null) }
             LaunchedEffect(noteId) {
                 if (noteId != null) note = noteViewModel.getNoteById(noteId)
             }
             note?.let { existingNote ->
                 NoteEditorScreen(
+                    paddingValues  = paddingValues,   // ← same
                     initialTitle   = existingNote.title,
                     initialContent = existingNote.content,
                     onBack = { navController.popBackStack() },
