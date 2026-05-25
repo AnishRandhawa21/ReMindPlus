@@ -41,7 +41,8 @@ class NoteViewModel(
 
     fun addNote(
         title: String,
-        content: String
+        content: String,
+        drawingData: String = ""
     ) {
         viewModelScope.launch {
             val userId = authManager.getCurrentUserId()
@@ -52,6 +53,7 @@ class NoteViewModel(
                     userId = userId,
                     title = title,
                     content = content,
+                    drawingData = drawingData,
                     isSynced = false
                 )
             )
@@ -62,13 +64,15 @@ class NoteViewModel(
     fun updateNote(
         note: NoteEntity,
         title: String,
-        content: String
+        content: String,
+        drawingData: String = note.drawingData
     ) {
         viewModelScope.launch {
             repository.updateNote(
                 note.copy(
                     title = title,
                     content = content,
+                    drawingData = drawingData,
                     updatedAt = System.currentTimeMillis(),
                     isSynced = false
                 )

@@ -112,4 +112,7 @@ dependencies {
 
     //LifeCycle
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.2")
+
+    // Serialization
+    implementation(libs.kotlinx.serialization.json)
 }

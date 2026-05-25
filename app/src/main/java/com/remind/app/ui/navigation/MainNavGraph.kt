@@ -118,8 +118,8 @@ fun MainNavGraph(
             NoteEditorScreen(
                 paddingValues = paddingValues,   // ← from MainNavGraph's parameter
                 onBack = { navController.popBackStack() },
-                onSave = { title, content ->
-                    noteViewModel.addNote(title = title, content = content)
+                onSave = { title, content, drawingData ->
+                    noteViewModel.addNote(title = title, content = content, drawingData = drawingData)
                     navController.popBackStack()
                 }
             )
@@ -143,9 +143,10 @@ fun MainNavGraph(
                     paddingValues  = paddingValues,   // ← same
                     initialTitle   = existingNote.title,
                     initialContent = existingNote.content,
+                    initialDrawingData = existingNote.drawingData,
                     onBack = { navController.popBackStack() },
-                    onSave = { title, content ->
-                        noteViewModel.updateNote(existingNote, title, content)
+                    onSave = { title, content, drawingData ->
+                        noteViewModel.updateNote(existingNote, title, content, drawingData)
                         navController.popBackStack()
                     }
                 )

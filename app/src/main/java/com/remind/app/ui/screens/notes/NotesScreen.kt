@@ -1,6 +1,7 @@
 package com.remind.app.ui.screens.notes
 
 import androidx.compose.animation.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -20,7 +21,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -33,6 +36,7 @@ import androidx.navigation.NavController
 import com.remind.app.data.local.entity.NoteEntity
 import com.remind.app.ui.navigation.Routes
 import com.remind.app.ui.theme.*
+import com.remind.app.ui.screens.notes.mapper.DrawingMapper
 
 // Pastel card colours cycling through the palette — all from Color.kt
 private val noteCardPalette = listOf(
@@ -240,10 +244,28 @@ fun NoteCard(
                 )
             }
 
+            // ── Doodle Preview ───────────────────────────────────────────────
+            val hasDoodles = remember(note.drawingData) {
+                note.drawingData.isNotBlank() && 
+                DrawingMapper.deserializeList(note.drawingData).any { !it.isHighlight }
+            }
+
+            if (hasDoodles) {
+                Spacer(modifier = Modifier.height(8.dp))
+                DoodlePreview(
+                    drawingData = note.drawingData,
+                    modifier    = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.White)
+                )
+            }
+
             // Timestamp
             Spacer(modifier = Modifier.height(10.dp))
             Text(
-                text  = formatNoteDate(note.updatedAt ?: note.createdAt),
+                text  = formatNoteDate(note.updatedAt),
                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                 color = CharcoalDark.copy(alpha = 0.4f)
             )
@@ -289,6 +311,91 @@ fun NoteCard(
     }
 }
 
+@Composable
+fun DoodlePreview(
+    drawingData: String,
+    modifier: Modifier = Modifier
+) {
+    val strokes = remember(drawingData) { 
+        DrawingMapper.deserializeList(drawingData).filter { !it.isHighlight } 
+    }
+    
+    Canvas(modifier = modifier) {
+        if (strokes.isEmpty()) return@Canvas
+
+        // Calculate bounding box to scale and center
+        var minX = Float.MAX_VALUE
+        var minY = Float.MAX_VALUE
+        var maxX = Float.MIN_VALUE
+        var maxY = Float.MIN_VALUE
+
+        strokes.forEach { stroke ->
+            stroke.points.forEach { pt ->
+                minX = minOf(minX, pt.x)
+                minY = minOf(minY, pt.y)
+                maxX = maxOf(maxX, pt.x)
+                maxY = maxOf(maxY, pt.y)
+            }
+        }
+
+        val drawingWidth = maxX - minX
+        val drawingHeight = maxY - minY
+        
+        if (drawingWidth <= 0f || drawingHeight <= 0f) return@Canvas
+
+        val padding = 2f
+        val availableWidth = size.width - padding * 2
+        val availableHeight = size.height - padding * 2
+        
+        val scaleX = availableWidth / drawingWidth
+        val scaleY = availableHeight / drawingHeight
+        val scale = minOf(scaleX, scaleY, 1f) // Don't scale up, only down
+
+        val offsetX = (size.width - drawingWidth * scale) / 2f - minX * scale
+        val offsetY = (size.height - drawingHeight * scale) / 2f - minY * scale
+
+        strokes.forEach { stroke ->
+            val pts = stroke.points
+            if (pts.isEmpty()) return@forEach
+
+            val path = Path()
+            val first = pts[0]
+            path.moveTo(first.x * scale + offsetX, first.y * scale + offsetY)
+
+            if (pts.size > 1) {
+                for (i in 1 until pts.size - 1) {
+                    val current = pts[i]
+                    val next = pts[i + 1]
+                    val midPoint = Offset(
+                        (current.x + next.x) * scale / 2f + offsetX,
+                        (current.y + next.y) * scale / 2f + offsetY
+                    )
+                    path.quadraticTo(
+                        current.x * scale + offsetX,
+                        current.y * scale + offsetY,
+                        midPoint.x,
+                        midPoint.y
+                    )
+                }
+                val last = pts.last()
+                path.lineTo(last.x * scale + offsetX, last.y * scale + offsetY)
+            } else {
+                path.lineTo(first.x * scale + offsetX, first.y * scale + offsetY)
+            }
+
+            drawPath(
+                path = path,
+                color = stroke.color,
+                style = Stroke(
+                    width = stroke.strokeWidth * scale,
+                    cap = StrokeCap.Round,
+                    join = StrokeJoin.Round
+                ),
+                blendMode = if (stroke.isHighlight) BlendMode.Multiply else BlendMode.SrcOver
+            )
+        }
+    }
+}
 
 private fun formatNoteDate(millis: Long): String {
     val sdf = java.text.SimpleDateFormat("MMM d", java.util.Locale.getDefault())

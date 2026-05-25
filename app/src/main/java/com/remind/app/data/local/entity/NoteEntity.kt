@@ -23,5 +23,7 @@ data class NoteEntity(
 
     val isSynced: Boolean = false,
 
-    val isDeleted: Boolean = false
+    val isDeleted: Boolean = false,
+
+    val drawingData: String = ""
 )

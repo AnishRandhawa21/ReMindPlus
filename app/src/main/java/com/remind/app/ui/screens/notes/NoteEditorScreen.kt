@@ -29,14 +29,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.remind.app.ui.screens.notes.mapper.DrawingMapper
+import com.remind.app.ui.screens.notes.model.DrawState
+import com.remind.app.ui.screens.notes.model.DrawTool
+import com.remind.app.ui.screens.notes.model.StrokeData
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NoteEditorScreen(
     initialTitle  : String       = "",
     initialContent: String       = "",
+    initialDrawingData: String   = "",
     onBack        : () -> Unit,
-    onSave        : (title: String, content: String) -> Unit,
+    onSave        : (title: String, content: String, drawingData: String) -> Unit,
     paddingValues : PaddingValues = PaddingValues()
 ) {
     var title   by remember { mutableStateOf(initialTitle) }
@@ -74,8 +79,11 @@ fun NoteEditorScreen(
     }
 
     // Single stroke list shared across all modes
-    val drawingStrokes = remember { mutableStateListOf<StrokeData>() }
-
+    val drawingStrokes = remember {
+        val initialStrokes = DrawingMapper.deserializeList(initialDrawingData)
+        mutableStateListOf<StrokeData>().apply { addAll(initialStrokes) }
+    }
+    
     // ── Derived flags ────────────────────────────────────────────────────────
     val isTextInputEnabled = editorMode == EditorMode.TEXT
     val isDrawingActive    = editorMode == EditorMode.DRAW || editorMode == EditorMode.HIGHLIGHT
@@ -181,7 +189,10 @@ fun NoteEditorScreen(
                     .clickable(
                         interactionSource = interactionSource,
                         indication        = null,
-                        onClick           = { onSave(title.trim(), content.text.trim()) }
+                        onClick           = {
+                            val serializedDrawing = DrawingMapper.serializeList(drawingStrokes)
+                            onSave(title.trim(), content.text.trim(), serializedDrawing)
+                        }
                     )
                     .padding(horizontal = 18.dp, vertical = 9.dp),
                 contentAlignment = Alignment.Center
