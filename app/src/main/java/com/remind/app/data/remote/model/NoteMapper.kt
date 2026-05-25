@@ -20,7 +20,9 @@ fun NoteEntity.toRemote(): RemoteNote {
 
         updatedAt = updatedAt,
 
-        isDeleted = isDeleted
+        isDeleted = isDeleted,
+
+        drawingData = drawingData
     )
 }
 
@@ -44,6 +46,8 @@ fun RemoteNote.toEntity(): NoteEntity {
 
         isSynced = true,
 
-        isDeleted = isDeleted
+        isDeleted = isDeleted,
+
+        drawingData = drawingData
     )
 }

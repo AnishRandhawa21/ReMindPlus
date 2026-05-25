@@ -124,7 +124,8 @@ class SyncManager(
                     "is_pinned",
                     "created_at",
                     "updated_at",
-                    "is_deleted"
+                    "is_deleted",
+                    "drawing_data"
                 )
             ) {
                 order(

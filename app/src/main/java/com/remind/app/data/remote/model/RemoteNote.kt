@@ -25,5 +25,8 @@ data class RemoteNote(
     val updatedAt: Long,
 
     @SerialName("is_deleted")
-    val isDeleted: Boolean
+    val isDeleted: Boolean,
+
+    @SerialName("drawing_data")
+    val drawingData: String = ""
 )
