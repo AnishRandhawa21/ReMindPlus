@@ -47,6 +47,26 @@
             android:exported="false" />
 
         <receiver
+            android:name=".receiver.UsageReminderReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.remind.app.ACTION_USAGE_PERIODIC_CHECK" />
+                <action android:name="com.remind.app.ACTION_USAGE_SUMMARY_AFTERNOON" />
+                <action android:name="com.remind.app.ACTION_USAGE_SUMMARY_EVENING" />
+                <action android:name="com.remind.app.ACTION_USAGE_SUMMARY_NIGHT" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".receiver.ScreenStateReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.SCREEN_ON" />
+                <action android:name="android.intent.action.SCREEN_OFF" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
             android:name=".receiver.BootReceiver"
             android:enabled="true"
             android:exported="false">

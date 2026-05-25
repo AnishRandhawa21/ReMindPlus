@@ -1,6 +1,8 @@
 package com.remind.app.ui.screens.stats
 
 import android.content.Context
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
@@ -20,9 +22,9 @@ class StatsViewModel : ViewModel() {
     val isLoading = mutableStateOf(false)
 
     val todayScreenTime = mutableStateOf("")
-    val todayUsageMillis = mutableStateOf(0L)
-    val monthlyUsageMillis = mutableStateOf(0L)
-    val totalMonthHours = mutableStateOf(0)
+    val todayUsageMillis = mutableLongStateOf(0L)
+    val monthlyUsageMillis = mutableLongStateOf(0L)
+    val totalMonthHours = mutableIntStateOf(0)
 
     val topApps = mutableStateListOf<AppUsageInfo>()
     val weeklyUsage = mutableStateListOf<DailyUsageInfo>()
@@ -33,9 +35,6 @@ class StatsViewModel : ViewModel() {
 
     fun loadStats(context: Context) {
         val currentDay = Calendar.getInstance().get(Calendar.DAY_OF_YEAR)
-        
-        // If data is already loaded for today and it's not the first load, 
-        // we only update Today's live metrics to keep it super fast.
         val shouldFullReload = isFirstLoad || lastLoadDay != currentDay
 
         viewModelScope.launch {
@@ -50,17 +49,15 @@ class StatsViewModel : ViewModel() {
                 }
                 
                 withContext(Dispatchers.IO) {
-                    // Always load today's live data
                     val todayUsage = UsageStatsHelper.getTodayScreenTime(context)
                     val apps = UsageStatsHelper.getTopUsedApps(context, limit = 3)
                     
-                    // Only load heavy historical data if needed
                     val weekly = if (shouldFullReload) UsageStatsHelper.getWeeklyUsageStats(context) else null
                     val monthlyUsage = if (shouldFullReload) UsageStatsHelper.getMonthlyTotalUsage(context, filtered = false) else -1L
                     val monthHours = if (shouldFullReload) UsageStatsHelper.getTotalHoursInCurrentMonth() else -1
 
                     withContext(Dispatchers.Main) {
-                        todayUsageMillis.value = todayUsage
+                        todayUsageMillis.longValue = todayUsage
                         todayScreenTime.value = UsageStatsHelper.formatScreenTime(todayUsage)
                         
                         topApps.clear()
@@ -70,7 +67,6 @@ class StatsViewModel : ViewModel() {
                             weeklyUsage.clear()
                             weeklyUsage.addAll(weekly)
                         } else {
-                            // Just update today's bar in the existing weekly list
                             if (weeklyUsage.isNotEmpty()) {
                                 val lastIndex = weeklyUsage.size - 1
                                 weeklyUsage[lastIndex] = weeklyUsage[lastIndex].copy(usageMillis = todayUsage)
@@ -78,10 +74,10 @@ class StatsViewModel : ViewModel() {
                         }
 
                         if (monthlyUsage != -1L) {
-                            monthlyUsageMillis.value = monthlyUsage
+                            monthlyUsageMillis.longValue = monthlyUsage
                         }
                         if (monthHours != -1) {
-                            totalMonthHours.value = monthHours
+                            totalMonthHours.intValue = monthHours
                         }
                         
                         isLoading.value = false

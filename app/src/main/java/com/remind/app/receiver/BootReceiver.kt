@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.remind.app.data.local.DatabaseProvider
+import com.remind.app.data.usage.UsageNudgeScheduler
 import com.remind.app.utils.AlarmScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -16,6 +17,7 @@ class BootReceiver : BroadcastReceiver() {
             action == "android.intent.action.QUICKBOOT_POWERON" ||
             action == "com.htc.intent.action.QUICKBOOT_POWERON"
         ) {
+            UsageNudgeScheduler.scheduleNudges(context)
             val pendingResult = goAsync()
             CoroutineScope(Dispatchers.IO).launch {
                 try {

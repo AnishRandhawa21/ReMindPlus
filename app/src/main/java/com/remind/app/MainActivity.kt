@@ -17,7 +17,12 @@ import androidx.compose.runtime.getValue
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.remind.app.data.remote.SupabaseClient
+import com.remind.app.data.usage.UsageNudgeScheduler
+import com.remind.app.receiver.ScreenStateReceiver
 import com.remind.app.ui.navigation.RootNavGraph
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import com.remind.app.ui.theme.ReMindTheme
 import com.remind.app.utils.NotificationHelper
 import com.remind.app.utils.PreferenceManager
@@ -27,11 +32,19 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        // Register dynamic screen state receiver (required for SCREEN_ON/OFF)
+        val filter = android.content.IntentFilter().apply {
+            addAction(android.content.Intent.ACTION_SCREEN_ON)
+            addAction(android.content.Intent.ACTION_SCREEN_OFF)
+        }
+        registerReceiver(ScreenStateReceiver(), filter)
+
         // Handle Deep Link on first launch
         SupabaseClient.client.handleDeeplinks(intent)
         
         requestPermissions()
         NotificationHelper.createNotificationChannel(this)
+        UsageNudgeScheduler.scheduleNudges(this)
 
         val preferenceManager = PreferenceManager(this)
         

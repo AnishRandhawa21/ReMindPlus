@@ -43,6 +43,42 @@ object UsageStatsHelper {
         return calculateUsageRange(usm, startTime, endTime, context).values.sum()
     }
 
+    /**
+     * Calculates the duration of the current continuous session for the active app.
+     * returns Pair(PackageName, durationMillis)
+     */
+    fun getCurrentContinuousSession(context: Context): Pair<String, Long>? {
+        val usm = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        val endTime = System.currentTimeMillis()
+        val startTime = endTime - TimeUnit.HOURS.toMillis(3) // Look back 3 hours max for a session
+
+        val events = usm.queryEvents(startTime, endTime)
+        val event = UsageEvents.Event()
+        
+        var lastForegroundPkg: String? = null
+        var lastForegroundTime: Long = 0L
+
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event)
+            if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND || 
+                event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
+                lastForegroundPkg = event.packageName
+                lastForegroundTime = event.timeStamp
+            } else if (event.eventType == UsageEvents.Event.MOVE_TO_BACKGROUND || 
+                       event.eventType == UsageEvents.Event.ACTIVITY_PAUSED) {
+                if (event.packageName == lastForegroundPkg) {
+                    lastForegroundPkg = null
+                }
+            }
+        }
+
+        return if (lastForegroundPkg != null && lastForegroundPkg != context.packageName) {
+            lastForegroundPkg to (endTime - lastForegroundTime)
+        } else {
+            null
+        }
+    }
+
     private fun calculateUsageRange(
         usm: UsageStatsManager,
         startTime: Long,
@@ -59,28 +95,28 @@ object UsageStatsHelper {
             val pkg = event.packageName
             if (pkg == context.packageName) continue
 
-            when (event.eventType) {
-                UsageEvents.Event.MOVE_TO_FOREGROUND -> {
-                    lastEventTimeMap[pkg] = event.timeStamp
-                }
-                UsageEvents.Event.MOVE_TO_BACKGROUND -> {
-                    val start = lastEventTimeMap[pkg]
-                    if (start != null) {
-                        val duration = event.timeStamp - start
-                        if (duration > 0 && isAllowedAppCached(context, pkg)) {
-                            appUsageMap[pkg] = (appUsageMap[pkg] ?: 0L) + duration
-                        }
-                        lastEventTimeMap.remove(pkg)
+            if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND || 
+                event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
+                lastEventTimeMap[pkg] = event.timeStamp
+            } else if (event.eventType == UsageEvents.Event.MOVE_TO_BACKGROUND || 
+                       event.eventType == UsageEvents.Event.ACTIVITY_PAUSED) {
+                val start = lastEventTimeMap[pkg]
+                if (start != null) {
+                    val duration = event.timeStamp - start
+                    if (duration > 0 && isAllowedAppCached(context, pkg)) {
+                        appUsageMap[pkg] = (appUsageMap[pkg] ?: 0L) + duration
                     }
+                    lastEventTimeMap.remove(pkg)
                 }
             }
         }
         
-        // Add apps currently in foreground
         lastEventTimeMap.forEach { (pkg, start) ->
-            val duration = endTime - start
-            if (duration > 0 && isAllowedAppCached(context, pkg)) {
-                appUsageMap[pkg] = (appUsageMap[pkg] ?: 0L) + duration
+            if (isAllowedAppCached(context, pkg)) {
+                val duration = endTime - start
+                if (duration > 0) {
+                    appUsageMap[pkg] = (appUsageMap[pkg] ?: 0L) + duration
+                }
             }
         }
         
@@ -92,10 +128,12 @@ object UsageStatsHelper {
         val calendar = Calendar.getInstance()
         val endTime = calendar.timeInMillis
         calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-        calendar.set(Calendar.MILLISECOND, 0)
-        val startTime = calendar.timeInMillis
+        val startTime = calendar.apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
 
         val usageMap = calculateUsageRange(usm, startTime, endTime, context)
 
@@ -117,7 +155,6 @@ object UsageStatsHelper {
         val usm = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val result = mutableListOf<DailyUsageInfo>()
         
-        // Single pass query for the entire week
         val calendar = Calendar.getInstance()
         val endTime = calendar.timeInMillis
         
@@ -139,22 +176,30 @@ object UsageStatsHelper {
             val pkg = event.packageName
             if (pkg == context.packageName) continue
 
-            when (event.eventType) {
-                UsageEvents.Event.MOVE_TO_FOREGROUND -> {
-                    lastEventTimeMap[pkg] = event.timeStamp
-                }
-                UsageEvents.Event.MOVE_TO_BACKGROUND -> {
-                    val start = lastEventTimeMap[pkg]
-                    if (start != null) {
-                        val duration = event.timeStamp - start
-                        if (duration > 0 && isAllowedAppCached(context, pkg)) {
-                            val dayIndex = ((event.timeStamp - startTime) / TimeUnit.DAYS.toMillis(1)).toInt()
-                            if (dayIndex in 0..6) {
-                                dailyUsage[dayIndex] += duration
-                            }
+            if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND || 
+                event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
+                lastEventTimeMap[pkg] = event.timeStamp
+            } else if (event.eventType == UsageEvents.Event.MOVE_TO_BACKGROUND || 
+                       event.eventType == UsageEvents.Event.ACTIVITY_PAUSED) {
+                val start = lastEventTimeMap[pkg]
+                if (start != null) {
+                    val duration = event.timeStamp - start
+                    if (duration > 0 && isAllowedAppCached(context, pkg)) {
+                        val dayIndex = ((event.timeStamp - startTime) / TimeUnit.DAYS.toMillis(1)).toInt()
+                        if (dayIndex in 0..6) {
+                            dailyUsage[dayIndex] += duration
                         }
-                        lastEventTimeMap.remove(pkg)
                     }
+                    lastEventTimeMap.remove(pkg)
+                }
+            }
+        }
+
+        lastEventTimeMap.forEach { (pkg, start) ->
+            if (isAllowedAppCached(context, pkg)) {
+                val duration = endTime - start
+                if (duration > 0) {
+                    dailyUsage[6] += duration
                 }
             }
         }
@@ -190,7 +235,6 @@ object UsageStatsHelper {
         calendar.set(Calendar.MILLISECOND, 0)
         val startTime = calendar.timeInMillis
 
-        // For monthly, we use the aggregation but with strict launcher check
         val statsMap = usm.queryAndAggregateUsageStats(startTime, endTime)
         var total = 0L
         statsMap.forEach { (pkg, stats) ->

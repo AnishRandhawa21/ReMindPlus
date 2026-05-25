@@ -15,6 +15,7 @@ class PreferenceManager(context: Context) {
         private const val KEY_AUTO_SYNC = "key_auto_sync"
         private const val KEY_NOTIFICATIONS = "key_notifications"
         private const val KEY_NOTIFICATION_SOUND = "key_notification_sound"
+        private const val KEY_MONITORING_PRESET = "key_monitoring_preset"
     }
 
     private val _themeFlow = MutableStateFlow(sharedPreferences.getString(KEY_THEME, "System") ?: "System")
@@ -55,4 +56,8 @@ class PreferenceManager(context: Context) {
     var notificationSound: String
         get() = sharedPreferences.getString(KEY_NOTIFICATION_SOUND, "notification_1") ?: "notification_1"
         set(value) = sharedPreferences.edit().putString(KEY_NOTIFICATION_SOUND, value).apply()
+
+    var monitoringPreset: String
+        get() = sharedPreferences.getString(KEY_MONITORING_PRESET, "Balanced") ?: "Balanced"
+        set(value) = sharedPreferences.edit().putString(KEY_MONITORING_PRESET, value).apply()
 }

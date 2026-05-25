@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -76,11 +77,9 @@ fun StatsScreen(viewModel: StatsViewModel = viewModel()) {
                 contentPadding = PaddingValues(bottom = 24.dp)
             ) {
                 if (isLoading && todayScreenTime.isEmpty()) {
-                    // Skeleton Loading items
                     item { SkeletonCard(height = 160.dp) }
                     item { SkeletonCard(height = 200.dp) }
                     item { SkeletonCard(height = 80.dp) }
-                    item { SkeletonCard(height = 60.dp) }
                     items(3) { AppUsageSkeleton() }
                 } else {
                     item {
