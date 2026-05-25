@@ -82,4 +82,14 @@ class NoteRepository(
 
         return dao.getNoteByIdSync(id)
     }
+
+    suspend fun softDeleteNote(
+        id: String
+    ) {
+
+        dao.softDeleteNote(
+            id = id,
+            updatedAt = System.currentTimeMillis()
+        )
+    }
 }

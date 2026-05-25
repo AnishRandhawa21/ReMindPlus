@@ -10,6 +10,7 @@ interface NoteDao {
     @Query("""
     SELECT * FROM notes
     WHERE userId = :userId
+    AND isDeleted = 0
     ORDER BY isPinned DESC, updatedAt DESC
 """)
     fun getAllNotes(
@@ -43,12 +44,26 @@ interface NoteDao {
         UPDATE notes
         SET 
             isPinned = :isPinned,
-            updatedAt = :updatedAt
+            updatedAt = :updatedAt,
+            isSynced = 0
         WHERE id = :id
     """)
     suspend fun updatePinnedStatus(
         id: String,
         isPinned: Boolean,
+        updatedAt: Long
+    )
+
+    @Query("""
+    UPDATE notes
+    SET
+        isDeleted = 1,
+        isSynced = 0,
+        updatedAt = :updatedAt
+    WHERE id = :id
+""")
+    suspend fun softDeleteNote(
+        id: String,
         updatedAt: Long
     )
 

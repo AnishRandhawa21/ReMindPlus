@@ -81,7 +81,9 @@ class NoteViewModel(
         note: NoteEntity
     ) {
         viewModelScope.launch {
-            repository.deleteNote(note)
+            repository.softDeleteNote(
+                note.id
+            )
             triggerAutoSync()
         }
     }
