@@ -23,6 +23,7 @@ class StatsViewModel : ViewModel() {
 
     val todayScreenTime = mutableStateOf("")
     val todayUsageMillis = mutableLongStateOf(0L)
+    val yesterdayUsageMillis = mutableLongStateOf(0L)
     val monthlyUsageMillis = mutableLongStateOf(0L)
     val totalMonthHours = mutableIntStateOf(0)
 
@@ -50,6 +51,7 @@ class StatsViewModel : ViewModel() {
                 
                 withContext(Dispatchers.IO) {
                     val todayUsage = UsageStatsHelper.getTodayScreenTime(context)
+                    val yesterdayUsage = UsageStatsHelper.getYesterdayScreenTime(context)
                     val apps = UsageStatsHelper.getTopUsedApps(context, limit = 3)
                     
                     val weekly = if (shouldFullReload) UsageStatsHelper.getWeeklyUsageStats(context) else null
@@ -58,6 +60,7 @@ class StatsViewModel : ViewModel() {
 
                     withContext(Dispatchers.Main) {
                         todayUsageMillis.longValue = todayUsage
+                        yesterdayUsageMillis.longValue = yesterdayUsage
                         todayScreenTime.value = UsageStatsHelper.formatScreenTime(todayUsage)
                         
                         topApps.clear()

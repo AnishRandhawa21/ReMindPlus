@@ -38,6 +38,7 @@ fun StatsScreen(viewModel: StatsViewModel = viewModel()) {
     val isLoading by viewModel.isLoading
     val todayScreenTime by viewModel.todayScreenTime
     val todayUsageMillis by viewModel.todayUsageMillis
+    val yesterdayUsageMillis by viewModel.yesterdayUsageMillis
     val monthlyUsageMillis by viewModel.monthlyUsageMillis
     val totalMonthHours by viewModel.totalMonthHours
     
@@ -84,7 +85,8 @@ fun StatsScreen(viewModel: StatsViewModel = viewModel()) {
                     item {
                         UsageOverviewCard(
                             todayScreenTime = todayScreenTime,
-                            todayUsageMillis = todayUsageMillis
+                            todayUsageMillis = todayUsageMillis,
+                            yesterdayUsageMillis = yesterdayUsageMillis
                         )
                     }
 
@@ -137,7 +139,7 @@ fun StatsScreen(viewModel: StatsViewModel = viewModel()) {
 }
 
 @Composable
-fun UsageOverviewCard(todayScreenTime: String, todayUsageMillis: Long) {
+fun UsageOverviewCard(todayScreenTime: String, todayUsageMillis: Long, yesterdayUsageMillis: Long) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
@@ -149,11 +151,41 @@ fun UsageOverviewCard(todayScreenTime: String, todayUsageMillis: Long) {
             modifier = Modifier.padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = "Today's Usage",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = "Today's Usage",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                )
+
+                if (yesterdayUsageMillis > 0) {
+                    val percent = (((todayUsageMillis - yesterdayUsageMillis).toDouble() / yesterdayUsageMillis) * 100).toInt()
+                    val isUp = percent > 0
+                    val isDown = percent < 0
+                    val absPercent = kotlin.math.abs(percent)
+                    
+                    if (percent != 0) {
+                        Spacer(modifier = Modifier.width(12.dp))
+                        
+                        Surface(
+                            color = if (isUp) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f) 
+                                    else MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = if (isUp) "+$absPercent%" else "-$absPercent%",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isUp) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+            }
 
             Text(
                 text = if (todayScreenTime.isEmpty()) "0h 0m" else todayScreenTime,
@@ -165,9 +197,9 @@ fun UsageOverviewCard(todayScreenTime: String, todayUsageMillis: Long) {
 
             val hours = TimeUnit.MILLISECONDS.toHours(todayUsageMillis)
             val meterColor = when {
-                hours < 3 -> MaterialTheme.colorScheme.secondary
-                hours < 6 -> Color(0xFFFFC107) 
-                else -> MaterialTheme.colorScheme.error
+                hours < 3 -> Color(0xFFA8C5A0) // Healthy (Green)
+                hours < 6 -> Color(0xFFF5D76E) // Moderate (Yellow)
+                else -> MaterialTheme.colorScheme.error // High (Red)
             }
 
             val meterLabel = when {
@@ -285,8 +317,9 @@ fun WeeklyUsageChart(weeklyUsage: List<DailyUsageInfo>) {
                                 .background(
                                     when {
                                         isSelected -> MaterialTheme.colorScheme.primary
-                                        percentage > 0.8f -> MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
-                                        else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                                        percentage < 0.3f -> Color(0xFFA8C5A0) // Less (Green)
+                                        percentage < 0.7f -> Color(0xFFF5D76E) // Medium (Yellow)
+                                        else -> MaterialTheme.colorScheme.error // High (Red)
                                     },
                                     RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp, bottomStart = 2.dp, bottomEnd = 2.dp)
                                 )

@@ -36,8 +36,20 @@ object UsageSummaryManager {
             }
 
             SummaryType.NIGHT -> {
+                val yesterdayUsage = UsageStatsHelper.getYesterdayScreenTime(context)
+                val diffText = if (yesterdayUsage > 0) {
+                    val percent = (((totalUsage - yesterdayUsage).toDouble() / yesterdayUsage) * 100).toInt()
+                    if (percent > 0) {
+                        " (Up $percent% from yesterday)"
+                    } else if (percent < 0) {
+                        " (Down ${kotlin.math.abs(percent)}% from yesterday)"
+                    } else {
+                        " (Same as yesterday)"
+                    }
+                } else ""
+
                 "Daily Wellbeing" to
-                        "Today's total screen time was $timeText. Small mindful moments matter."
+                        "Today's total screen time was $timeText$diffText. Reflect on your habits!"
             }
         }
 
