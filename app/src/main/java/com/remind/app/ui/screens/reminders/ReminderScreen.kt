@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
@@ -33,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.remind.app.data.local.entity.ReminderEntity
 import com.remind.app.ui.theme.*
 import com.remind.app.utils.DateUtils
@@ -42,15 +44,19 @@ import java.util.*
 
 // ── Palette lists (pastel card backgrounds – fine on both themes) ─────────────
 
-private val quickNoteColors = listOf(
-    PastelGreenLight, PastelBlueLight, PastelPinkLight,
-    PastelLavenderLight, PastelPeachLight, PastelYellowLight
+private val cardGradients = listOf(
+    listOf(PastelBlueLight,   Color(0xFFC3D9F0)),
+    listOf(PastelGreenLight,  Color(0xFFC5E0C0)),
+    listOf(PastelPeachLight,  Color(0xFFFAD7BF)),
+    listOf(PastelLavenderLight, Color(0xFFDFCDFA)),
+    listOf(PastelPinkLight,   Color(0xFFF8C9D5)),
+    listOf(PastelYellowLight, Color(0xFFF9E18B)),
 )
 
-private val timelineCardColors = listOf(
-    PastelBlueLight, PastelGreenLight, PastelPeachLight,
-    PastelLavenderLight, PastelPinkLight, PastelYellowLight
-)
+private fun getCardGradient(id: String): Brush {
+    val colors = cardGradients[kotlin.math.abs(id.hashCode()) % cardGradients.size]
+    return Brush.verticalGradient(colors)
+}
 
 // ── Day chip data ─────────────────────────────────────────────────────────────
 
@@ -97,6 +103,7 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
 
     val quickNotes         by viewModel.quickNotes.collectAsState()
     val scheduledReminders by viewModel.scheduledReminders.collectAsState()
+    val isReady            by viewModel.isReady.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -243,10 +250,9 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
                                     scaleIn(tween(400, delayMillis = i * 40), initialScale = 0.9f)
                         ) {
                             Box {
-                                val cardBg = quickNoteColors[kotlin.math.abs(note.id.hashCode()) % quickNoteColors.size]
                                 QuickNoteCard(
                                     reminder = note,
-                                    bgColor = cardBg,
+                                    cardBrush = getCardGradient(note.id),
                                     onLongPress = { menuReminder = note },
                                     onToggleComplete = { viewModel.toggleReminderCompleted(context, note) },
                                     onClick = { editingReminder = note }
@@ -289,7 +295,9 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
 
             // ── Timeline — THIS is the only thing that scrolls ────────────────
             Box(modifier = Modifier.weight(1f)) {
-                if (groupedTimeline.isEmpty()) {
+                if (!isReady) {
+                    // Empty during initial load
+                } else if (groupedTimeline.isEmpty()) {
                     // Empty state centred in the scrollable area
                     Column(
                         modifier = Modifier
@@ -584,7 +592,7 @@ private fun TimelineCard(
     onToggleComplete: () -> Unit,
     onClick: () -> Unit
 ) {
-    val cardBg = timelineCardColors[kotlin.math.abs(reminder.id.hashCode()) % timelineCardColors.size]
+    val cardBrush = getCardGradient(reminder.id)
 
     val reminderStatus = reminder.dueTime?.let {
         when {
@@ -623,7 +631,7 @@ private fun TimelineCard(
             .scale(animatedScale)
             .graphicsLayer(alpha = animatedOpacity)
             .clip(RoundedCornerShape(18.dp))
-            .background(cardBg)
+            .background(cardBrush)
             .combinedClickable(onClick = onClick, onLongClick = onLongPress)
             .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
@@ -694,7 +702,7 @@ private fun TimelineCard(
 @Composable
 private fun QuickNoteCard(
     reminder: ReminderEntity,
-    bgColor: Color,
+    cardBrush: Brush,
     onLongPress: () -> Unit,
     onToggleComplete: () -> Unit,
     onClick: () -> Unit
@@ -706,7 +714,7 @@ private fun QuickNoteCard(
         modifier = Modifier
             .width(150.dp)
             .clip(RoundedCornerShape(20.dp))
-            .background(bgColor)
+            .background(cardBrush)
             .combinedClickable(onClick = onClick, onLongClick = onLongPress)
             .padding(16.dp)
     ) {

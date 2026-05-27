@@ -1,12 +1,11 @@
 package com.remind.app.ui.screens.stats
 
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Analytics
@@ -16,8 +15,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -30,13 +29,16 @@ import com.remind.app.utils.UsagePermissionHelper
 import com.remind.app.utils.UsageStatsHelper
 import java.util.concurrent.TimeUnit
 import androidx.compose.ui.res.painterResource
+import com.remind.app.ui.animation.*
+import com.remind.app.ui.theme.*
+
 @Composable
 fun StatsScreen(viewModel: StatsViewModel = viewModel()) {
     val context = LocalContext.current
     
     val hasPermission by viewModel.hasPermission
     val isLoading by viewModel.isLoading
-    val todayScreenTime by viewModel.todayScreenTime
+    val isReady by viewModel.isReady
     val todayUsageMillis by viewModel.todayUsageMillis
     val yesterdayUsageMillis by viewModel.yesterdayUsageMillis
     val monthlyUsageMillis by viewModel.monthlyUsageMillis
@@ -71,65 +73,55 @@ fun StatsScreen(viewModel: StatsViewModel = viewModel()) {
         )
 
         if (hasPermission) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(bottom = 24.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                if (isLoading && todayScreenTime.isEmpty()) {
-                    item { SkeletonCard(height = 160.dp) }
-                    item { SkeletonCard(height = 200.dp) }
-                    item { SkeletonCard(height = 80.dp) }
-                    items(3) { AppUsageSkeleton() }
-                } else {
-                    item {
-                        UsageOverviewCard(
-                            todayScreenTime = todayScreenTime,
-                            todayUsageMillis = todayUsageMillis,
-                            yesterdayUsageMillis = yesterdayUsageMillis
-                        )
-                    }
+                StatsEntranceTransition(0) {
+                    UsageOverviewCard(
+                        todayUsageMillis = todayUsageMillis,
+                        yesterdayUsageMillis = yesterdayUsageMillis
+                    )
+                }
 
-                    item {
-                        WeeklyUsageChart(weeklyUsage = weeklyUsage)
-                    }
+                StatsEntranceTransition(1) {
+                    WeeklyUsageChart(weeklyUsage = weeklyUsage)
+                }
 
-                    item {
-                        MonthlySummaryCard(
-                            monthlyUsageMillis = monthlyUsageMillis,
-                            totalMonthHours = totalMonthHours
-                        )
-                    }
+                StatsEntranceTransition(2) {
+                    MonthlySummaryCard(
+                        monthlyUsageMillis = monthlyUsageMillis,
+                        totalMonthHours = totalMonthHours
+                    )
+                }
 
-                    item {
+                Text(
+                    text = "Top Used Apps",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
+                )
+
+                if (topApps.isEmpty() && isReady && !isLoading) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
                         Text(
-                            text = "Top Used Apps",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
+                            text = "No usage data found for today.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(16.dp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                }
 
-                    if (topApps.isEmpty() && !isLoading) {
-                        item {
-                            Surface(
-                                modifier = Modifier.fillMaxWidth(),
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Text(
-                                    text = "No usage data found for today.",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.padding(16.dp),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-
-                    items(topApps) { app ->
-                        AppUsageItem(app = app)
-                    }
+                topApps.forEach { app ->
+                    AppUsageItem(app = app)
                 }
             }
         } else {
@@ -139,7 +131,8 @@ fun StatsScreen(viewModel: StatsViewModel = viewModel()) {
 }
 
 @Composable
-fun UsageOverviewCard(todayScreenTime: String, todayUsageMillis: Long, yesterdayUsageMillis: Long) {
+fun UsageOverviewCard(todayUsageMillis: Long, yesterdayUsageMillis: Long) {
+    val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
@@ -164,8 +157,12 @@ fun UsageOverviewCard(todayScreenTime: String, todayUsageMillis: Long, yesterday
                 if (yesterdayUsageMillis > 0) {
                     val percent = (((todayUsageMillis - yesterdayUsageMillis).toDouble() / yesterdayUsageMillis) * 100).toInt()
                     val isUp = percent > 0
-                    val isDown = percent < 0
                     val absPercent = kotlin.math.abs(percent)
+                    
+                    val animatedPercent by animateIntAsStateWithDelay(
+                        targetValue = absPercent,
+                        delayMillis = 400
+                    )
                     
                     if (percent != 0) {
                         Spacer(modifier = Modifier.width(12.dp))
@@ -176,7 +173,7 @@ fun UsageOverviewCard(todayScreenTime: String, todayUsageMillis: Long, yesterday
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text(
-                                text = if (isUp) "+$absPercent%" else "-$absPercent%",
+                                text = if (isUp) "+$animatedPercent%" else "-$animatedPercent%",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = if (isUp) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSecondaryContainer,
@@ -187,8 +184,13 @@ fun UsageOverviewCard(todayScreenTime: String, todayUsageMillis: Long, yesterday
                 }
             }
 
+            val animatedTime by animateScreenTimeAsState(
+                targetMillis = todayUsageMillis,
+                delayMillis = 300
+            )
+
             Text(
-                text = if (todayScreenTime.isEmpty()) "0h 0m" else todayScreenTime,
+                text = animatedTime,
                 style = MaterialTheme.typography.displayMedium,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -196,10 +198,10 @@ fun UsageOverviewCard(todayScreenTime: String, todayUsageMillis: Long, yesterday
             )
 
             val hours = TimeUnit.MILLISECONDS.toHours(todayUsageMillis)
-            val meterColor = when {
-                hours < 3 -> Color(0xFFA8C5A0) // Healthy (Green)
-                hours < 6 -> Color(0xFFF5D76E) // Moderate (Yellow)
-                else -> MaterialTheme.colorScheme.error // High (Red)
+            val meterBrush = when {
+                hours < 3 -> Brush.horizontalGradient(listOf(StatMintStart, StatMintEnd))
+                hours < 6 -> Brush.horizontalGradient(listOf(StatBlueStart, StatBlueEnd))
+                else -> Brush.horizontalGradient(listOf(StatRoseStart, StatRoseEnd))
             }
 
             val meterLabel = when {
@@ -208,28 +210,53 @@ fun UsageOverviewCard(todayScreenTime: String, todayUsageMillis: Long, yesterday
                 else -> "High usage"
             }
 
-            val progress = (todayUsageMillis.toFloat() /
+            val targetProgress = (todayUsageMillis.toFloat() /
                     TimeUnit.HOURS.toMillis(8).toFloat()).coerceAtMost(1f)
+            
+            val animatedProgress by animateFloatAsStateWithDelay(
+                targetValue = targetProgress,
+                delayMillis = 600
+            )
 
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                LinearProgressIndicator(
-                    progress = { progress },
+                // Gradient Progress Bar that mimics the standard LinearProgressIndicator
+                androidx.compose.foundation.Canvas(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(10.dp)
-                        .clip(RoundedCornerShape(5.dp)),
-                    color = meterColor,
-                    trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.1f),
-                    strokeCap = StrokeCap.Round
-                )
+                ) {
+                    val trackColor = onPrimaryContainer.copy(alpha = 0.1f)
+                    val strokeWidth = size.height
+                    
+                    // Draw Track
+                    drawLine(
+                        color = trackColor,
+                        start = androidx.compose.ui.geometry.Offset(strokeWidth / 2, size.height / 2),
+                        end = androidx.compose.ui.geometry.Offset(size.width - strokeWidth / 2, size.height / 2),
+                        strokeWidth = strokeWidth,
+                        cap = androidx.compose.ui.graphics.StrokeCap.Round
+                    )
+                    
+                    // Draw Progress
+                    if (animatedProgress > 0f) {
+                        val progressWidth = (size.width - strokeWidth) * animatedProgress
+                        drawLine(
+                            brush = meterBrush,
+                            start = androidx.compose.ui.geometry.Offset(strokeWidth / 2, size.height / 2),
+                            end = androidx.compose.ui.geometry.Offset(strokeWidth / 2 + progressWidth, size.height / 2),
+                            strokeWidth = strokeWidth,
+                            cap = androidx.compose.ui.graphics.StrokeCap.Round
+                        )
+                    }
+                }
 
                 Text(
                     text = meterLabel,
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    color = onPrimaryContainer,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(top = 10.dp)
                 )
@@ -292,7 +319,13 @@ fun WeeklyUsageChart(weeklyUsage: List<DailyUsageInfo>) {
                 weeklyUsage.forEachIndexed { index, day ->
                     val isSelected = selectedIndex == index
                     val percentage = day.usageMillis.toFloat() / maxUsage.toFloat()
-                    val barHeight = (percentage * 100).dp
+                    
+                    val animatedPercentage by animateFloatAsStateWithDelay(
+                        targetValue = percentage,
+                        delayMillis = 400 + (index * 40)
+                    )
+                    
+                    val barHeight = (animatedPercentage * 100).dp
 
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -315,13 +348,15 @@ fun WeeklyUsageChart(weeklyUsage: List<DailyUsageInfo>) {
                                 .width(24.dp)
                                 .height(barHeight)
                                 .background(
-                                    when {
-                                        isSelected -> MaterialTheme.colorScheme.primary
-                                        percentage < 0.3f -> Color(0xFFA8C5A0) // Less (Green)
-                                        percentage < 0.7f -> Color(0xFFF5D76E) // Medium (Yellow)
-                                        else -> MaterialTheme.colorScheme.error // High (Red)
+                                    brush = when {
+                                        isSelected -> Brush.verticalGradient(
+                                            listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary.copy(alpha = 0.7f))
+                                        )
+                                        percentage < 0.3f -> Brush.verticalGradient(listOf(StatMintStart, StatMintEnd))
+                                        percentage < 0.7f -> Brush.verticalGradient(listOf(StatBlueStart, StatBlueEnd))
+                                        else -> Brush.verticalGradient(listOf(StatRoseStart, StatRoseEnd))
                                     },
-                                    RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp, bottomStart = 2.dp, bottomEnd = 2.dp)
+                                    shape = RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp, bottomStart = 2.dp, bottomEnd = 2.dp)
                                 )
                         )
                         Text(
@@ -340,7 +375,12 @@ fun WeeklyUsageChart(weeklyUsage: List<DailyUsageInfo>) {
 
 @Composable
 fun MonthlySummaryCard(monthlyUsageMillis: Long, totalMonthHours: Int) {
-    val spendHours = TimeUnit.MILLISECONDS.toHours(monthlyUsageMillis)
+    val spendHours = TimeUnit.MILLISECONDS.toHours(monthlyUsageMillis).toInt()
+    
+    val animatedHours by animateIntAsStateWithDelay(
+        targetValue = spendHours,
+        delayMillis = 1000
+    )
     
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -358,7 +398,7 @@ fun MonthlySummaryCard(monthlyUsageMillis: Long, totalMonthHours: Int) {
                 color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
             )
             Text(
-                text = "${spendHours}h / ${totalMonthHours}h",
+                text = "${animatedHours}h / ${totalMonthHours}h",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onTertiaryContainer
@@ -434,73 +474,6 @@ fun AppUsageItem(app: AppUsageInfo) {
                 modifier = Modifier.size(20.dp),
                 tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
             )
-        }
-    }
-}
-
-@Composable
-fun SkeletonCard(height: androidx.compose.ui.unit.Dp) {
-    val transition = rememberInfiniteTransition(label = "")
-    val alpha by transition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.7f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ), label = ""
-    )
-
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(height),
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = alpha)
-    ) {}
-}
-
-@Composable
-fun AppUsageSkeleton() {
-    val transition = rememberInfiniteTransition(label = "")
-    val alpha by transition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.7f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ), label = ""
-    )
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Surface(
-            modifier = Modifier.size(44.dp),
-            shape = RoundedCornerShape(10.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = alpha)
-        ) {}
-        
-        Spacer(modifier = Modifier.width(12.dp))
-        
-        Column(modifier = Modifier.weight(1f)) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth(0.6f)
-                    .height(16.dp),
-                shape = RoundedCornerShape(4.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = alpha)
-            ) {}
-            Spacer(modifier = Modifier.height(8.dp))
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth(0.3f)
-                    .height(12.dp),
-                shape = RoundedCornerShape(4.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = alpha)
-            ) {}
         }
     }
 }

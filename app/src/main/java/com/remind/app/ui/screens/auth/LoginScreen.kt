@@ -10,18 +10,17 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.res.painterResource
@@ -45,30 +44,33 @@ fun LoginScreen(
     isLoading: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+    val isDark = isSystemInDarkTheme()
+    
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Cream)
+            .background(colorScheme.background)
             .systemBarsPadding(),
     ) {
-        // Ambient orbs
+        // Ambient orbs - more vibrant in dark mode
         AmbientOrb(
-            color    = PastelBlue.copy(alpha = 0.35f),
-            size     = 260.dp,
+            color    = colorScheme.primary.copy(alpha = if (isDark) 0.35f else 0.25f),
+            size     = 280.dp,
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .offset(x = 60.dp, y = (-80).dp),
+                .offset(x = 60.dp, y = (-60).dp),
         )
         AmbientOrb(
-            color    = PastelGreen.copy(alpha = 0.28f),
-            size     = 300.dp,
+            color    = colorScheme.secondary.copy(alpha = if (isDark) 0.3f else 0.2f),
+            size     = 320.dp,
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .offset(x = (-80).dp, y = 100.dp),
+                .offset(x = (-80).dp, y = 80.dp),
         )
         AmbientOrb(
-            color    = PastelPink.copy(alpha = 0.22f),
-            size     = 120.dp,
+            color    = colorScheme.tertiary.copy(alpha = if (isDark) 0.25f else 0.15f),
+            size     = 140.dp,
             modifier = Modifier
                 .align(Alignment.CenterStart)
                 .offset(x = (-40).dp),
@@ -92,6 +94,7 @@ fun LoginScreen(
 
 @Composable
 private fun TopSection() {
+    val colorScheme = MaterialTheme.colorScheme
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier            = Modifier.padding(top = 80.dp),
@@ -107,11 +110,11 @@ private fun TopSection() {
         Text(
             text = buildAnnotatedString {
                 append("ReMind")
-                withStyle(SpanStyle(color = PastelBlue)) { append("+") }
+                withStyle(SpanStyle(color = colorScheme.primary)) { append("+") }
             },
             fontSize      = 38.sp,
             fontWeight    = FontWeight.Bold,
-            color         = TextPrimary,
+            color         = colorScheme.onBackground,
             letterSpacing = (-0.5).sp,
             lineHeight    = 38.sp,
         )
@@ -122,7 +125,7 @@ private fun TopSection() {
             text          = "Remember everything that matters.",
             fontWeight    = FontWeight.Normal,
             fontSize      = 14.sp,
-            color         = TextSecondary,
+            color         = colorScheme.onSurfaceVariant,
             letterSpacing = 0.3.sp,
             textAlign     = TextAlign.Center,
         )
@@ -130,9 +133,9 @@ private fun TopSection() {
         Spacer(Modifier.height(24.dp))
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FeaturePill(label = "Reminders", background = PastelBlueLight)
-            FeaturePill(label = "Notes",     background = PastelGreenLight)
-            FeaturePill(label = "Insights",  background = PastelPinkLight)
+            FeaturePill(label = "Reminders", background = colorScheme.primaryContainer)
+            FeaturePill(label = "Notes",     background = colorScheme.secondaryContainer)
+            FeaturePill(label = "Insights",  background = colorScheme.tertiaryContainer)
         }
     }
 }
@@ -142,6 +145,7 @@ private fun BottomSection(
     isLoading    : Boolean,
     onLoginClick : () -> Unit,
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     Column(
         modifier            = Modifier.padding(horizontal = 28.dp, vertical = 48.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -158,20 +162,20 @@ private fun BottomSection(
                 withStyle(
                     SpanStyle(
                         textDecoration = TextDecoration.Underline,
-                        color          = TextSecondary,
+                        color          = colorScheme.onSurfaceVariant,
                     )
                 ) { append("Terms of Service") }
                 append(" & ")
                 withStyle(
                     SpanStyle(
                         textDecoration = TextDecoration.Underline,
-                        color          = TextSecondary,
+                        color          = colorScheme.onSurfaceVariant,
                     )
                 ) { append("Privacy Policy") }
             },
             fontWeight = FontWeight.Light,
             fontSize   = 11.sp,
-            color      = TextTertiary,
+            color      = colorScheme.outline,
             textAlign  = TextAlign.Center,
             lineHeight = 18.sp,
         )
@@ -187,8 +191,12 @@ private fun AmbientOrb(
     Box(
         modifier = modifier
             .size(size)
-            .clip(CircleShape)
-            .background(color),
+            .background(
+                brush = Brush.radialGradient(
+                    colors = listOf(color, Color.Transparent),
+                ),
+                shape = CircleShape
+            ),
     )
 }
 
@@ -204,7 +212,7 @@ private fun FeaturePill(label: String, background: Color) {
             text          = label,
             fontWeight    = FontWeight.Normal,
             fontSize      = 12.sp,
-            color         = CharcoalDark,
+            color         = MaterialTheme.colorScheme.onPrimaryContainer,
             letterSpacing = 0.2.sp,
         )
     }
@@ -215,6 +223,7 @@ private fun GoogleSignInButton(
     isLoading : Boolean,
     onClick   : () -> Unit,
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -223,6 +232,9 @@ private fun GoogleSignInButton(
         label         = "btnScale",
     )
 
+    val buttonColor = if (isSystemInDarkTheme()) colorScheme.surfaceVariant else CharcoalDark
+    val contentColor = if (isSystemInDarkTheme()) colorScheme.onSurface else Cream
+
     Box(
         contentAlignment = Alignment.Center,
         modifier         = Modifier
@@ -230,7 +242,7 @@ private fun GoogleSignInButton(
             .height(56.dp)
             .scale(scale)
             .clip(RoundedCornerShape(16.dp))
-            .background(if (isLoading) CharcoalDark.copy(alpha = 0.75f) else CharcoalDark)
+            .background(if (isLoading) buttonColor.copy(alpha = 0.75f) else buttonColor)
             .clickable(
                 interactionSource = interactionSource,
                 indication        = null,
@@ -260,7 +272,7 @@ private fun GoogleSignInButton(
                     text          = "Continue with Google",
                     fontWeight    = FontWeight.Medium,
                     fontSize      = 15.sp,
-                    color         = Cream,
+                    color         = contentColor,
                     letterSpacing = 0.1.sp,
                 )
             }
@@ -278,8 +290,8 @@ private fun GoogleSignInButton(
             ) {
                 CircularProgressIndicator(
                     modifier        = Modifier.size(20.dp),
-                    color           = Cream,
-                    trackColor      = Cream.copy(alpha = 0.25f),
+                    color           = contentColor,
+                    trackColor      = contentColor.copy(alpha = 0.25f),
                     strokeWidth     = 2.dp,
                     strokeCap       = StrokeCap.Round,
                 )
@@ -287,7 +299,7 @@ private fun GoogleSignInButton(
                     text          = "Signing you in…",
                     fontWeight    = FontWeight.Medium,
                     fontSize      = 15.sp,
-                    color         = Cream.copy(alpha = 0.85f),
+                    color         = contentColor.copy(alpha = 0.85f),
                     letterSpacing = 0.1.sp,
                 )
             }

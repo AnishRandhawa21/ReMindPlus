@@ -39,20 +39,20 @@ import com.remind.app.ui.navigation.Routes
 import com.remind.app.ui.theme.*
 import com.remind.app.ui.screens.notes.mapper.DrawingMapper
 
-// Pastel card colours cycling through the palette — all from Color.kt
-private val noteCardPalette = listOf(
-    PastelYellowLight,
-    PastelGreenLight,
-    PastelBlueLight,
-    PastelPinkLight,
-    PastelLavenderLight,
-    PastelPeachLight,
+// Gradient pairs for note cards — pairing light pastels with their standard versions
+private val noteCardGradients = listOf(
+    listOf(PastelYellowLight, Color(0xFFF9E18B)),
+    listOf(PastelGreenLight,  Color(0xFFC5E0C0)),
+    listOf(PastelBlueLight,   Color(0xFFC3D9F0)),
+    listOf(PastelPinkLight,   Color(0xFFF8C9D5)),
+    listOf(PastelLavenderLight, Color(0xFFDFCDFA)),
+    listOf(PastelPeachLight,  Color(0xFFFAD7BF)),
 )
 
-private fun noteColor(id: String): Color =
-    noteCardPalette[
-        kotlin.math.abs(id.hashCode()) % noteCardPalette.size
-    ]
+private fun getNoteGradient(id: String): Brush {
+    val colors = noteCardGradients[kotlin.math.abs(id.hashCode()) % noteCardGradients.size]
+    return Brush.verticalGradient(colors)
+}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -61,6 +61,7 @@ fun NotesScreen(
     viewModel: NoteViewModel
 ) {
     val notes by viewModel.notes.collectAsStateWithLifecycle()
+    val isReady by viewModel.isReady.collectAsStateWithLifecycle()
 
     val bgColor     = MaterialTheme.colorScheme.background
     val onBg        = MaterialTheme.colorScheme.onBackground
@@ -86,14 +87,17 @@ fun NotesScreen(
                     color = onBg
                 )
                 Text(
-                    text = "${notes.size} ${if (notes.size == 1) "note" else "notes"}",
+                    text = if (isReady) "${notes.size} ${if (notes.size == 1) "note" else "notes"}" else "Loading...",
                     style = MaterialTheme.typography.bodySmall,
                     color = onBgVariant
                 )
             }
 
             // ── Grid / Empty ─────────────────────────────────────────────
-            if (notes.isEmpty()) {
+            if (!isReady) {
+                // Keep screen clean during initial fetch
+                Box(modifier = Modifier.fillMaxSize())
+            } else if (notes.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -138,7 +142,7 @@ fun NotesScreen(
                         ) {
                             NoteCard(
                                 note        = note,
-                                cardColor   = noteColor(note.id),
+                                cardBrush   = getNoteGradient(note.id),
                                 onClick     = {
                                     navController.navigate("note_editor/${note.id}")
                                 },
@@ -173,7 +177,7 @@ fun NotesScreen(
 @Composable
 fun NoteCard(
     note: NoteEntity,
-    cardColor: Color,
+    cardBrush: Brush,
     onClick: () -> Unit,
     onPinClick: () -> Unit,
     onDeleteClick: () -> Unit
@@ -184,7 +188,7 @@ fun NoteCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(cardColor)
+            .background(cardBrush)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = { showMenu = true }

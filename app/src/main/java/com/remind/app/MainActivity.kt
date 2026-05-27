@@ -11,27 +11,38 @@ import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.remind.app.data.remote.SupabaseClient
 import com.remind.app.data.usage.UsageNudgeScheduler
 import com.remind.app.receiver.ScreenStateReceiver
 import com.remind.app.ui.navigation.RootNavGraph
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import com.remind.app.ui.screens.auth.LoginViewModel
 import com.remind.app.ui.theme.ReMindTheme
 import com.remind.app.utils.NotificationHelper
 import com.remind.app.utils.PreferenceManager
 import io.github.jan.supabase.auth.handleDeeplinks
+import io.github.jan.supabase.auth.status.SessionStatus
 
 class MainActivity : ComponentActivity() {
+
+    private val loginViewModel: LoginViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
         
+        // Keep the splash screen on-screen until the session status is definitively known
+        splashScreen.setKeepOnScreenCondition {
+            val status = loginViewModel.sessionStatus.value
+            status !is SessionStatus.Authenticated && status !is SessionStatus.NotAuthenticated
+        }
+
         // Register dynamic screen state receiver (required for SCREEN_ON/OFF)
         val filter = android.content.IntentFilter().apply {
             addAction(android.content.Intent.ACTION_SCREEN_ON)

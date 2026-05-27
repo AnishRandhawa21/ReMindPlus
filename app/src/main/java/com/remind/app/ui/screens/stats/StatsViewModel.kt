@@ -20,6 +20,7 @@ class StatsViewModel : ViewModel() {
 
     val hasPermission = mutableStateOf(false)
     val isLoading = mutableStateOf(false)
+    val isReady = mutableStateOf(false)
 
     val todayScreenTime = mutableStateOf("")
     val todayUsageMillis = mutableLongStateOf(0L)
@@ -84,6 +85,7 @@ class StatsViewModel : ViewModel() {
                         }
                         
                         isLoading.value = false
+                        isReady.value = true
                         isFirstLoad = false
                         lastLoadDay = currentDay
                     }

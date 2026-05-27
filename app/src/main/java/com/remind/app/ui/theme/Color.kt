@@ -9,9 +9,9 @@ val CardWhite      = Color(0xFFFFFFFF)
 val CardCream      = Color(0xFFFDF9F4)
 
 // ── Dark surface & background ─────────────────────────────────────────────────
-val SurfaceDark        = Color(0xFF1C1A18)
-val SurfaceVariantDark = Color(0xFF2C2926)
-val SurfaceCardDark    = Color(0xFF38332E)
+val SurfaceDark        = Color(0xFF0F0E0D) // Deeper, cleaner dark
+val SurfaceVariantDark = Color(0xFF1C1A18) // Previous background now a variant
+val SurfaceCardDark    = Color(0xFF252320)
 val OnSurfaceDark      = Color(0xFFF0EBE3)
 
 // ── Pastel accents (same in light & dark – they're pale enough) ───────────────
@@ -52,6 +52,14 @@ val StatusOverdue  = Color(0xFFF5A0A0)
 val StatusToday    = Color(0xFFA8C5A0)
 val StatusTomorrow = Color(0xFFAEC6E8)
 val StatusUpcoming = Color(0xFFD4BBEE)
+
+// ── Stats Gradients (Soft Pastels) ──────────────────────────────────────────
+val StatMintStart = Color(0xFFD4EAD0) // PastelGreenLight
+val StatMintEnd   = Color(0xFFA8C5A0) // PastelGreen
+val StatBlueStart = Color(0xFFD6E8F7) // PastelBlueLight
+val StatBlueEnd   = Color(0xFFAEC6E8) // PastelBlue
+val StatRoseStart = Color(0xFFFBD9E2) // PastelPinkLight
+val StatRoseEnd   = Color(0xFFD4BBEE) // PastelLavender
 
 // ── Legacy aliases (keep for existing references) ─────────────────────────────
 val Purple80     = PastelLavender

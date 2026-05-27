@@ -1,8 +1,5 @@
 package com.remind.app.ui.navigation
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -22,14 +19,17 @@ import io.github.jan.supabase.auth.status.SessionStatus
 
 @Composable
 fun RootNavGraph() {
-    val navController = rememberNavController()
     val viewModel: LoginViewModel = viewModel()
     val sessionStatus by viewModel.sessionStatus.collectAsState()
+
+    // While session is initializing, don't show any UI (Splash Screen is visible)
+    if (sessionStatus is SessionStatus.Initializing) return
+
+    val navController = rememberNavController()
     val startRoute = remember(sessionStatus) {
         when (sessionStatus) {
             is SessionStatus.Authenticated -> Routes.MAIN
-            is SessionStatus.NotAuthenticated -> Routes.LOGIN
-            else -> "loading" // Internal loading route
+            else -> Routes.LOGIN
         }
     }
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
@@ -38,15 +38,6 @@ fun RootNavGraph() {
         navController = navController,
         startDestination = startRoute
     ) {
-        composable("loading") {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        }
-
         composable(Routes.LOGIN) {
             LoginScreen(
                 isLoading    = isLoading,
@@ -65,14 +56,14 @@ fun RootNavGraph() {
         
         when (sessionStatus) {
             is SessionStatus.Authenticated -> {
-                if (currentRoute == Routes.LOGIN || currentRoute == "loading") {
+                if (currentRoute == Routes.LOGIN) {
                     navController.navigate(Routes.MAIN) {
                         popUpTo(0) { inclusive = true }
                     }
                 }
             }
             is SessionStatus.NotAuthenticated -> {
-                if (currentRoute == Routes.MAIN || currentRoute == "loading") {
+                if (currentRoute == Routes.MAIN) {
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(0) { inclusive = true }
                     }

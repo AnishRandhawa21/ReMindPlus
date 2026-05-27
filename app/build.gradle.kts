@@ -113,6 +113,9 @@ dependencies {
     //LifeCycle
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.2")
 
+    // Splash Screen
+    implementation("androidx.core:core-splashscreen:1.0.1")
+
     // Serialization
     implementation(libs.kotlinx.serialization.json)
 }

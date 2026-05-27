@@ -5,7 +5,10 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.remind.app.data.local.entity.NoteEntity
 import com.remind.app.data.repository.NoteRepository
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import com.remind.app.data.remote.AuthManager
@@ -19,8 +22,12 @@ class NoteViewModel(
     private val preferenceManager: PreferenceManager
 ) : ViewModel() {
 
+    private val _isReady = MutableStateFlow(false)
+    val isReady = _isReady.asStateFlow()
+
     val notes = repository
         .getAllNotes()
+        .onEach { _isReady.value = true }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),

@@ -5,7 +5,10 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.remind.app.data.local.entity.ReminderEntity
 import com.remind.app.data.repository.ReminderRepository
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import android.content.Context
@@ -21,8 +24,12 @@ class ReminderViewModel(
     private val preferenceManager: PreferenceManager
 ) : ViewModel() {
 
+    private val _isReady = MutableStateFlow(false)
+    val isReady = _isReady.asStateFlow()
+
     val reminders = repository
         .getAllReminders()
+        .onEach { _isReady.value = true }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -31,6 +38,7 @@ class ReminderViewModel(
 
     val quickNotes = repository
         .getQuickNotes()
+        .onEach { _isReady.value = true }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -39,6 +47,7 @@ class ReminderViewModel(
 
     val scheduledReminders = repository
         .getScheduledReminders()
+        .onEach { _isReady.value = true }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
