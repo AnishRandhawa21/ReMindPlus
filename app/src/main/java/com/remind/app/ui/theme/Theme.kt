@@ -86,9 +86,9 @@ fun ReMindTheme(
     content: @Composable () -> Unit
 ) {
     val accentColors = listOf(
-        PastelBlue, PastelGreen, PastelPink, PastelYellow, PastelLavender, PastelPeach
+        AestheticBlue, AestheticGreen, AestheticPink, AestheticYellow, AestheticLavender, AestheticPeach, AestheticTeal, AestheticRose
     )
-    val selectedAccent = accentColors.getOrElse(accentColorIndex) { PastelBlue }
+    val selectedAccent = accentColors.getOrElse(accentColorIndex) { AestheticBlue }
 
     val baseColorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
@@ -102,8 +102,8 @@ fun ReMindTheme(
     // Override the primary colors with our custom accent
     val colorScheme = baseColorScheme.copy(
         primary = selectedAccent,
-        onPrimary = CharcoalDark, // Text on accent color should be dark for contrast
-        primaryContainer = selectedAccent.copy(alpha = 0.3f),
+        onPrimary = CharcoalDark, // Pastels always look better with dark text
+        primaryContainer = selectedAccent.copy(alpha = 0.25f),
         onPrimaryContainer = if (darkTheme) selectedAccent else CharcoalDark
     )
 

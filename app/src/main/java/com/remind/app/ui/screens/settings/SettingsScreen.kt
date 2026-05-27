@@ -1,7 +1,16 @@
 package com.remind.app.ui.screens.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -16,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -24,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.remind.app.BuildConfig
+import com.remind.app.ui.animation.*
 import com.remind.app.ui.theme.*
 
 @Composable
@@ -160,9 +171,9 @@ fun SettingsScreen(
             item {
                 SettingsSectionTitle(title = "Data & Storage")
                 SettingsGroup {
-                    DataInfoItem(label = "Notes", count = noteCount)
+                    DataInfoItem(icon = Icons.Rounded.Description, label = "Notes", count = noteCount)
                     SettingsDivider()
-                    DataInfoItem(label = "Reminders", count = reminderCount)
+                    DataInfoItem(icon = Icons.Rounded.NotificationsActive, label = "Reminders", count = reminderCount)
                     SettingsDivider()
                     ActionSettingsItem(
                         icon = Icons.Rounded.DeleteSweep,
@@ -215,7 +226,9 @@ fun SoundSelectorItem(
                     Icons.Rounded.MusicNote,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier
+                        .size(24.dp)
+                        .iconAttention(selectedSound)
                 )
                 Spacer(modifier = Modifier.width(16.dp))
                 Text(
@@ -375,15 +388,23 @@ fun SyncStatusItem(
     isSyncing: Boolean,
     onSyncClick: () -> Unit
 ) {
-    val isError = status.contains("Not") || status.contains("No") || status.contains("failed")
-    val statusColor = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-    val iconTint = if (isError) MaterialTheme.colorScheme.error else PastelBlue
-    val icon = if (isError) Icons.Rounded.SyncProblem else Icons.Rounded.CloudDone
+    val isPending = status.contains("unsynced")
+    val isError = status.contains("failed") || status.contains("No internet")
+    
+    val (displayStatus, statusColor, icon) = when {
+        isSyncing -> Triple("Syncing with cloud...", MaterialTheme.colorScheme.primary, Icons.Rounded.Sync)
+        isError -> Triple("Sync failed", MaterialTheme.colorScheme.error, Icons.Rounded.SyncProblem)
+        isPending -> {
+            val count = status.filter { it.isDigit() }
+            Triple("$count items pending", MaterialTheme.colorScheme.onSurfaceVariant, Icons.Rounded.CloudUpload)
+        }
+        else -> Triple("Everything backed up", AestheticBlue, Icons.Rounded.CloudDone)
+    }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -391,45 +412,60 @@ fun SyncStatusItem(
             Icon(
                 icon,
                 contentDescription = null,
-                tint = iconTint,
-                modifier = Modifier.size(24.dp)
+                tint = statusColor,
+                modifier = Modifier
+                    .size(24.dp)
+                    .then(if (isSyncing || isPending) Modifier.indicatorMorph() else Modifier)
             )
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(16.dp))
             Column {
                 Text(
                     text = "Cloud Sync",
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium)
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
                 )
                 Text(
-                    text = "Status: $status",
-                    style = MaterialTheme.typography.bodySmall, fontSize = 12.sp,
-                    color = statusColor,
-                    maxLines = 2, // Increased to 2 lines
-                    overflow = TextOverflow.Ellipsis
+                    text = displayStatus,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = statusColor.copy(alpha = 0.7f)
                 )
             }
         }
-        
-        Spacer(modifier = Modifier.width(8.dp))
 
-        Button(
+        // --- New Premium Sync Chip ---
+        Surface(
             onClick = onSyncClick,
             enabled = !isSyncing,
-            shape = RoundedCornerShape(12.dp),
-            contentPadding = PaddingValues(horizontal = 12.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-            )
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+            shape = RoundedCornerShape(12.dp)
         ) {
-            if (isSyncing) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (isSyncing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(14.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                } else {
+                    Icon(
+                        Icons.Rounded.Sync,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+                Text(
+                    text = if (isSyncing) "Syncing" else "Sync",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.ExtraBold
                 )
-            } else {
-                Text("Sync", style = MaterialTheme.typography.labelLarge)
             }
         }
     }
@@ -443,10 +479,18 @@ fun ToggleSettingsItem(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onCheckedChange(!checked) }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = { onCheckedChange(!checked) }
+            )
+            .settingsMorphClick(pressed = isPressed)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -454,7 +498,9 @@ fun ToggleSettingsItem(
             icon,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(24.dp)
+            modifier = Modifier
+                .size(24.dp)
+                .iconAttention(checked)
         )
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -488,10 +534,18 @@ fun ActionSettingsItem(
     titleColor: Color = Color.Unspecified,
     onClick: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
+            .settingsMorphClick(pressed = isPressed)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -538,7 +592,11 @@ fun AppInfoItem(label: String, value: String) {
 }
 
 @Composable
-fun DataInfoItem(label: String, count: String) {
+fun DataInfoItem(
+    icon: ImageVector,
+    label: String,
+    count: String
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -546,10 +604,21 @@ fun DataInfoItem(label: String, count: String) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium)
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .size(24.dp)
+                    .iconAttention(count)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium)
+            )
+        }
         Surface(
             color = MaterialTheme.colorScheme.surfaceVariant,
             shape = RoundedCornerShape(8.dp)
@@ -595,17 +664,23 @@ fun ThemeSelectorItem(
         ) {
             themes.forEach { theme ->
                 val isSelected = selectedTheme == theme
+                val interactionSource = remember { MutableInteractionSource() }
+                val isPressed by interactionSource.collectIsPressedAsState()
+
                 FilterChip(
                     selected = isSelected,
                     onClick = { onThemeSelected(theme) },
                     label = { Text(theme, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .settingsMorphClick(pressed = isPressed),
                     shape = RoundedCornerShape(12.dp),
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                         selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                     ),
-                    border = null
+                    border = null,
+                    interactionSource = interactionSource
                 )
             }
         }
@@ -618,7 +693,7 @@ fun AccentColorSelectorItem(
     onColorSelected: (Int) -> Unit
 ) {
     val colors = listOf(
-        PastelBlue, PastelGreen, PastelPink, PastelYellow, PastelLavender, PastelPeach
+        AestheticBlue, AestheticGreen, AestheticPink, AestheticYellow, AestheticLavender, AestheticPeach, AestheticTeal, AestheticRose
     )
 
     Column(modifier = Modifier.padding(16.dp)) {
@@ -635,27 +710,50 @@ fun AccentColorSelectorItem(
                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium)
             )
         }
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(16.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             colors.forEachIndexed { index, color ->
+                val isSelected = selectedColorIndex == index
+                val animatedScale by animateFloatAsState(
+                    targetValue = if (isSelected) 1.15f else 1f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                    label = "color_dot_morph"
+                )
+
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(color)
-                        .clickable { onColorSelected(index) },
+                        .size(38.dp)
+                        .graphicsLayer {
+                            scaleX = animatedScale
+                            scaleY = animatedScale
+                        }
+                        .border(
+                            width = if (isSelected) 2.dp else 0.dp,
+                            color = if (isSelected) color else Color.Transparent,
+                            shape = CircleShape
+                        )
+                        .padding(4.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (selectedColorIndex == index) {
-                        Icon(
-                            Icons.Rounded.Check,
-                            contentDescription = null,
-                            tint = CharcoalDark,
-                            modifier = Modifier.size(20.dp)
-                        )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                            .background(color)
+                            .clickable { onColorSelected(index) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isSelected) {
+                            Icon(
+                                Icons.Rounded.Check,
+                                contentDescription = null,
+                                tint = CharcoalDark,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
                 }
             }

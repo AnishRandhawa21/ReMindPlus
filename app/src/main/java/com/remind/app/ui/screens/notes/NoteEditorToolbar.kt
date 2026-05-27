@@ -19,7 +19,8 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.FormatListBulleted
 import androidx.compose.material.icons.outlined.FormatListNumbered
 import androidx.compose.material.icons.outlined.FormatSize
-import androidx.compose.material.icons.outlined.Undo
+import androidx.compose.material.icons.automirrored.outlined.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -53,12 +54,11 @@ fun NoteEditorToolbar(
     onColorPick       : (Color) -> Unit,
     onStrokeWidth     : (Float) -> Unit,
     onStyleSelect     : (String) -> Unit,
+    onShowStylePicker : () -> Unit,
     modifier          : Modifier = Modifier,
 ) {
     val surfaceVar = MaterialTheme.colorScheme.surfaceVariant
     val outline    = MaterialTheme.colorScheme.outlineVariant
-
-    var showStylePicker by remember { mutableStateOf(false) }
 
     Box(modifier = modifier) {
         AnimatedContent(
@@ -80,7 +80,7 @@ fun NoteEditorToolbar(
                     onEnterHighlight  = onEnterHighlight,
                     onExitHighlight   = onExitHighlight,
                     onEnterDraw       = onEnterDraw,
-                    onShowStylePicker = { showStylePicker = true }
+                    onShowStylePicker = onShowStylePicker
                 )
 
                 // Highlight mode reuses the TEXT toolbar layout but marks the
@@ -95,7 +95,7 @@ fun NoteEditorToolbar(
                     onEnterHighlight  = onEnterHighlight,
                     onExitHighlight   = onExitHighlight,
                     onEnterDraw       = onEnterDraw,
-                    onShowStylePicker = { showStylePicker = true }
+                    onShowStylePicker = onShowStylePicker
                 )
 
                 EditorMode.DRAW -> DrawModeToolbar(
@@ -110,16 +110,6 @@ fun NoteEditorToolbar(
                 )
             }
         }
-    }
-
-    if (showStylePicker) {
-        StylePickerDialog(
-            onStyleSelected = {
-                onStyleSelect(it)
-                showStylePicker = false
-            },
-            onDismiss = { showStylePicker = false }
-        )
     }
 }
 
@@ -524,51 +514,13 @@ private fun StrokeThicknessButton(
 }
 
 @Composable
-private fun StylePickerDialog(
-    onStyleSelected : (String) -> Unit,
-    onDismiss       : () -> Unit,
-) {
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape           = RoundedCornerShape(20.dp),
-            color           = MaterialTheme.colorScheme.surface,
-            tonalElevation  = 6.dp,
-            shadowElevation = 8.dp,
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(16.dp)
-                    .width(IntrinsicSize.Max)
-            ) {
-                Text(
-                    text  = "Text Style",
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    modifier = Modifier.padding(bottom = 12.dp, start = 8.dp)
-                )
-
-                val styles = listOf(
-                    "H1 Title" to "# ",
-                    "H2 Subtitle" to "## ",
-                    "Note Bar" to "| "
-                )
-
-                styles.forEach { (label, prefix) ->
-                    TextButton(
-                        onClick = { onStyleSelected(prefix) },
-                        modifier = Modifier.fillMaxWidth(),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
-                    ) {
-                        Text(
-                            text  = label,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
-            }
-        }
-    }
+internal fun RowScope.ToolbarDivider(color: Color) {
+    Box(
+        modifier = Modifier
+            .width(0.5.dp)
+            .height(18.dp)
+            .background(color.copy(alpha = 0.4f))
+    )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -577,16 +529,13 @@ private fun StylePickerDialog(
 
 /**
  * Tappable toolbar button.
- *
- * [activeColor] lets callers override the default primary highlight for special
- * tools (e.g. the amber glow for the highlighter button).
  */
 @Composable
 internal fun IconToolButton(
     icon               : ImageVector,
     contentDescription : String,
     isActive           : Boolean = false,
-    activeColor        : Color   = Color.Unspecified,  // defaults to primary when Unspecified
+    activeColor        : Color   = Color.Unspecified,
     onClick            : () -> Unit,
 ) {
     val resolvedActive = if (activeColor == Color.Unspecified)
@@ -646,14 +595,4 @@ internal fun FormatToolButton(
             color = MaterialTheme.colorScheme.onSurface
         )
     }
-}
-
-@Composable
-internal fun RowScope.ToolbarDivider(color: Color) {
-    Box(
-        modifier = Modifier
-            .width(0.5.dp)
-            .height(18.dp)
-            .background(color.copy(alpha = 0.4f))
-    )
 }

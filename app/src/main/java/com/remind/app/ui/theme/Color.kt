@@ -14,7 +14,27 @@ val SurfaceVariantDark = Color(0xFF1C1A18) // Previous background now a variant
 val SurfaceCardDark    = Color(0xFF252320)
 val OnSurfaceDark      = Color(0xFFF0EBE3)
 
-// ── Pastel accents (same in light & dark – they're pale enough) ───────────────
+// ── Modern Aesthetic Pastels (Pretty in Light & Dark) ─────────────────────
+val AestheticBlue     = Color(0xFFA2D2FF)
+val AestheticGreen    = Color(0xFFB5EAD7)
+val AestheticPink     = Color(0xFFFFB7B2)
+val AestheticYellow   = Color(0xFFFFE0AC)
+val AestheticLavender = Color(0xFFC7CEEA)
+val AestheticPeach    = Color(0xFFFFDAC1)
+val AestheticTeal     = Color(0xFF9DD9D2)
+val AestheticRose     = Color(0xFFE0BBE4)
+
+// ── Designer Luxe Accents (Sophisticated & Aesthetic) ──────────────────────
+val LuxeIndigo   = Color(0xFF5C6BC0)
+val LuxeTeal     = Color(0xFF00897B)
+val LuxeRose     = Color(0xFFEC407A)
+val LuxeAmber    = Color(0xFFFFA000)
+val LuxeViolet   = Color(0xFF8E24AA)
+val LuxeSky      = Color(0xFF03A9F4)
+val LuxeSage     = Color(0xFF689F38)
+val LuxeCoral    = Color(0xFFFF7043)
+
+// ── Pastel accents (Legacy or softer alternatives) ───────────────
 val PastelYellow      = Color(0xFFF5D76E)
 val PastelYellowLight = Color(0xFFFAE8A0)
 

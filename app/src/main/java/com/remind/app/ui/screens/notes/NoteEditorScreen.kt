@@ -1,5 +1,7 @@
 package com.remind.app.ui.screens.notes
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,6 +14,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
@@ -20,6 +24,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalDensity
@@ -29,7 +35,9 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Popup
 import com.remind.app.ui.screens.notes.mapper.DrawingMapper
 import com.remind.app.ui.screens.notes.model.DrawState
 import com.remind.app.ui.screens.notes.model.DrawTool
@@ -66,6 +74,8 @@ fun NoteEditorScreen(
 
     val density            = LocalDensity.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val focusRequester     = remember { FocusRequester() }
+    var showStylePicker    by remember { mutableStateOf(false) }
 
     // Live scroll offset in pixels — read on every frame for the canvas
     val scrollOffsetPx by remember { derivedStateOf { scrollState.value.toFloat() } }
@@ -156,6 +166,35 @@ fun NoteEditorScreen(
         val newText   = text.substring(0, start) + insertion + text.substring(end)
         val newCursor = start + insertion.length
         content = TextFieldValue(text = newText, selection = TextRange(newCursor))
+    }
+
+    // ── Style Selection Logic ───────────────────────────────────────────────
+    val applyTextStyle = { prefix: String ->
+        val text       = content.text
+        val selection  = content.selection
+        val textBefore = text.take(selection.start)
+        val lineStart  = textBefore.lastIndexOf('\n') + 1
+        
+        val currentLine = text.substring(lineStart).split('\n').first()
+        
+        val knownPrefixes = listOf("# ", "## ", "| ", "• ", "☐ ", "☑ ")
+        var newLine = currentLine
+        knownPrefixes.find { currentLine.startsWith(it) }?.let {
+            newLine = currentLine.substring(it.length)
+        }
+        
+        if (newLine.getOrNull(0)?.isDigit() == true && newLine.contains(". ")) {
+            val prefixPart = newLine.substringBefore(". ")
+            if (prefixPart.all { it.isDigit() }) {
+                newLine = newLine.substring(prefixPart.length + 2)
+            }
+        }
+        
+        val newText = text.substring(0, lineStart) + prefix + newLine + text.substring(lineStart + currentLine.length)
+        content = content.copy(
+            text = newText,
+            selection = TextRange(lineStart + prefix.length + newLine.length)
+        )
     }
 
     // ── Visual Transformation for Styles & Checklist ────────────────────────
@@ -375,37 +414,8 @@ fun NoteEditorScreen(
             onStrokeWidth = { width ->
                 drawState = drawState.copy(strokeWidth = width)
             },
-            onStyleSelect = { prefix ->
-                // Apply style to current line
-                val text       = content.text
-                val selection  = content.selection
-                val textBefore = text.take(selection.start)
-                val lineStart  = textBefore.lastIndexOf('\n') + 1
-                
-                val currentLine = text.substring(lineStart).split('\n').first()
-                
-                // If line already starts with a prefix, remove it first? 
-                // Or just insert at start. Let's replace if it's one of ours.
-                val knownPrefixes = listOf("# ", "## ", "| ", "• ", "☐ ", "☑ ")
-                var newLine = currentLine
-                knownPrefixes.find { currentLine.startsWith(it) }?.let {
-                    newLine = currentLine.substring(it.length)
-                }
-                
-                // Also check for numbered list prefix "1. ", "2. ", etc.
-                if (newLine.getOrNull(0)?.isDigit() == true && newLine.contains(". ")) {
-                    val prefixPart = newLine.substringBefore(". ")
-                    if (prefixPart.all { it.isDigit() }) {
-                        newLine = newLine.substring(prefixPart.length + 2)
-                    }
-                }
-                
-                val newText = text.substring(0, lineStart) + prefix + newLine + text.substring(lineStart + currentLine.length)
-                content = content.copy(
-                    text = newText,
-                    selection = TextRange(lineStart + prefix.length + newLine.length)
-                )
-            }
+            onStyleSelect = { applyTextStyle(it) },
+            onShowStylePicker = { showStylePicker = true }
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -428,6 +438,13 @@ fun NoteEditorScreen(
                 .fillMaxWidth()
                 .weight(1f)
                 .clipToBounds()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    enabled = editorMode == EditorMode.TEXT
+                ) {
+                    focusRequester.requestFocus()
+                }
         ) {
             // ── Text layer (scrollable) ──────────────────────────────────────
             BasicTextField(
@@ -535,7 +552,8 @@ fun NoteEditorScreen(
                     imeAction      = ImeAction.None
                 ),
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .fillMaxSize()
+                    .focusRequester(focusRequester)
                     .verticalScroll(scrollState)
                     .padding(horizontal = 20.dp)
                     .padding(bottom = 200.dp), // extra bottom padding so strokes near end remain reachable
@@ -612,6 +630,103 @@ fun NoteEditorScreen(
                 scrollOffsetPx   = scrollOffsetPx,
                 drawingEnabled   = isDrawingActive
             )
+
+            // ── Floating Style Picker ────────────────────────────────────────
+            if (showStylePicker) {
+                textLayoutResult?.let { layout ->
+                    val cursorOffset = content.selection.end
+                    val line = layout.getLineForOffset(cursorOffset)
+                    val lineBottom = layout.getLineBottom(line)
+                    val lineEndOffset = layout.getLineEnd(line)
+                    val lineEndRect = layout.getCursorRect(lineEndOffset)
+
+                    // Position it at the end of the current line, or fallback to cursor
+                    val xPos = (lineEndRect.left + 20).toInt() // +20 for padding
+                    val yPos = (lineBottom - scrollOffsetPx).toInt()
+
+                    Popup(
+                        offset = IntOffset(xPos, yPos),
+                        onDismissRequest = { showStylePicker = false }
+                    ) {
+                        StylePickerBubble(
+                            onStyleSelected = { prefix ->
+                                applyTextStyle(prefix)
+                                showStylePicker = false
+                            },
+                            onDismiss = { showStylePicker = false }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Premium Floating Style Picker Bubble
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun StylePickerBubble(
+    onStyleSelected: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var isVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        isVisible = true
+    }
+
+    AnimatedVisibility(
+        visible = isVisible,
+        enter = fadeIn(tween(200)) + scaleIn(tween(250, easing = EaseOutBack), initialScale = 0.8f),
+        exit = fadeOut(tween(150)) + scaleOut(tween(150), targetScale = 0.9f)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 8.dp,
+            shadowElevation = 12.dp,
+            modifier = Modifier
+                .padding(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                val styles = listOf(
+                    Triple("H1", "# ", Icons.Outlined.Title),
+                    Triple("H2", "## ", Icons.AutoMirrored.Outlined.ShortText),
+                    Triple("Body", "", Icons.AutoMirrored.Outlined.Notes),
+                    Triple("Note", "| ", Icons.Outlined.FormatQuote)
+                )
+
+                styles.forEach { (label, prefix, icon) ->
+                    Column(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { onStyleSelected(prefix) }
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = label,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    }
+                }
+            }
         }
     }
 }
