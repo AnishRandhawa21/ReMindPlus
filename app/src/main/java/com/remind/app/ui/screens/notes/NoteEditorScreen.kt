@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.*
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
@@ -54,6 +55,8 @@ fun NoteEditorScreen(
     val onBgVariant = MaterialTheme.colorScheme.onSurfaceVariant
     val outline     = MaterialTheme.colorScheme.outlineVariant
 
+    val primaryColor = MaterialTheme.colorScheme.primary
+
     var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
 
     // ── Unified scroll state ─────────────────────────────────────────────────
@@ -66,6 +69,29 @@ fun NoteEditorScreen(
 
     // Live scroll offset in pixels — read on every frame for the canvas
     val scrollOffsetPx by remember { derivedStateOf { scrollState.value.toFloat() } }
+
+    // Auto-scroll to cursor when typing to keep it visible above keyboard
+    LaunchedEffect(content.selection, textLayoutResult) {
+        val layout = textLayoutResult ?: return@LaunchedEffect
+        val cursor = content.selection.end
+        if (cursor > content.text.length) return@LaunchedEffect
+
+        val line = layout.getLineForOffset(cursor)
+        val lineTop = layout.getLineTop(line)
+        val lineBottom = layout.getLineBottom(line)
+        val viewportHeight = scrollState.viewportSize
+
+        if (viewportHeight > 0) {
+            val currentScroll = scrollState.value
+            if (lineBottom > currentScroll + viewportHeight) {
+                // Scroll down to show cursor at bottom with some padding
+                scrollState.animateScrollTo((lineBottom - viewportHeight + 80).toInt())
+            } else if (lineTop < currentScroll) {
+                // Scroll up to show cursor at top
+                scrollState.animateScrollTo(lineTop.toInt())
+            }
+        }
+    }
 
     // ── Editor / Draw mode state ─────────────────────────────────────────────
     var editorMode       by remember { mutableStateOf(EditorMode.TEXT) }
@@ -132,19 +158,55 @@ fun NoteEditorScreen(
         content = TextFieldValue(text = newText, selection = TextRange(newCursor))
     }
 
-    // ── Visual Transformation for Checkbox Indent ────────────────────────────
-    val checklistTransformation = remember {
+    // ── Visual Transformation for Styles & Checklist ────────────────────────
+    val noteVisualTransformation = remember(primaryColor, onBg, onBgVariant) {
         VisualTransformation { text ->
             val transformed = buildAnnotatedString {
                 val lines = text.text.split('\n')
                 lines.forEachIndexed { i, line ->
-                    if (line.startsWith("☐ ") || line.startsWith("☑ ")) {
-                        withStyle(SpanStyle(color = Color.Transparent, letterSpacing = 6.sp)) {
-                            append(line.take(2))
+                    when {
+                        line.startsWith("# ") -> {
+                            // H1 Style: bold, larger, primary color
+                            // Prefix is hidden and takes no space
+                            withStyle(SpanStyle(color = Color.Transparent, fontSize = 0.sp)) {
+                                append("# ")
+                            }
+                            withStyle(SpanStyle(fontSize = 22.sp, fontWeight = FontWeight.Bold, color = primaryColor)) {
+                                append(line.substring(2))
+                            }
                         }
-                        append(line.substring(2))
-                    } else {
-                        append(line)
+                        line.startsWith("## ") -> {
+                            // H2 Style: bold, slightly larger
+                            withStyle(SpanStyle(color = Color.Transparent, fontSize = 0.sp)) {
+                                append("## ")
+                            }
+                            withStyle(SpanStyle(fontSize = 19.sp, fontWeight = FontWeight.SemiBold)) {
+                                append(line.substring(3))
+                            }
+                        }
+                        line.startsWith("| ") -> {
+                            // Note Bar: Italicized with a visible bar
+                            // Prefix "|" is visible, space is hidden and takes no space
+                            withStyle(SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold)) {
+                                append("|")
+                            }
+                            withStyle(SpanStyle(color = Color.Transparent, fontSize = 0.sp)) {
+                                append(" ")
+                            }
+                            withStyle(SpanStyle(fontStyle = FontStyle.Italic, color = onBgVariant)) {
+                                append(line.substring(2))
+                            }
+                        }
+                        line.startsWith("☐ ") || line.startsWith("☑ ") -> {
+                            withStyle(SpanStyle(color = Color.Transparent, letterSpacing = 6.sp)) {
+                                append(line.take(2))
+                            }
+                            // Apply smaller font size to checklist items
+                            withStyle(SpanStyle(fontSize = 14.sp)) {
+                                append(line.substring(2))
+                            }
+                        }
+                        else -> append(line)
                     }
                     if (i < lines.size - 1) append("\n")
                 }
@@ -305,6 +367,29 @@ fun NoteEditorScreen(
             onStrokeWidth = { width ->
                 drawState = drawState.copy(strokeWidth = width)
             },
+            onStyleSelect = { prefix ->
+                // Apply style to current line
+                val text       = content.text
+                val selection  = content.selection
+                val textBefore = text.take(selection.start)
+                val lineStart  = textBefore.lastIndexOf('\n') + 1
+                
+                val currentLine = text.substring(lineStart).split('\n').first()
+                
+                // If line already starts with a prefix, remove it first? 
+                // Or just insert at start. Let's replace if it's one of ours.
+                val knownPrefixes = listOf("# ", "## ", "| ", "• ", "– ", "☐ ", "☑ ")
+                var newLine = currentLine
+                knownPrefixes.find { currentLine.startsWith(it) }?.let {
+                    newLine = currentLine.substring(it.length)
+                }
+                
+                val newText = text.substring(0, lineStart) + prefix + newLine + text.substring(lineStart + currentLine.length)
+                content = content.copy(
+                    text = newText,
+                    selection = TextRange(lineStart + prefix.length + newLine.length)
+                )
+            }
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -344,16 +429,20 @@ fun NoteEditorScreen(
                         val textBefore = newText.substring(0, pos)
                         val lineStart  = textBefore.lastIndexOf('\n') + 1
                         val line       = textBefore.substring(lineStart)
-                        val prefixes   = listOf("• ", "– ", "☐ ", "☑ ")
+                        val prefixes   = listOf("• ", "– ", "☐ ", "☑ ", "# ", "## ", "| ")
                         val prefix     = prefixes.find { line.startsWith(it) }
 
                         if (prefix != null) {
-                            if (line.trim() in listOf("•", "–", "☐", "☑")) {
+                            if (line.trim() in listOf("•", "–", "☐", "☑", "#", "##", "|")) {
                                 val updated = newText.substring(0, lineStart) + newText.substring(pos + 1)
                                 content = TextFieldValue(updated, TextRange(lineStart))
                                 return@BasicTextField
                             } else {
-                                val newPrefix = if (prefix.contains("☐") || prefix.contains("☑")) "☐ " else prefix
+                                val newPrefix = when {
+                                    prefix.contains("☐") || prefix.contains("☑") -> "☐ "
+                                    prefix == "# " || prefix == "## " || prefix == "| " -> prefix
+                                    else -> prefix
+                                }
                                 val updated   = newText.substring(0, pos + 1) + newPrefix + newText.substring(pos + 1)
                                 content = TextFieldValue(updated, TextRange(pos + 1 + newPrefix.length))
                                 return@BasicTextField
@@ -361,7 +450,7 @@ fun NoteEditorScreen(
                         }
                     }
 
-                    // Smart Backspace — remove checklist prefix on backspace at start
+                    // Smart Backspace — remove checklist/style prefix on backspace at start
                     if (newText.length == oldText.length - 1 &&
                         content.selection.start == newValue.selection.start + 1
                     ) {
@@ -370,6 +459,7 @@ fun NoteEditorScreen(
                         val lineStart  = textBefore.lastIndexOf('\n') + 1
                         val line       = oldText.substring(lineStart)
 
+                        // 1. Checkboxes
                         if ((line.startsWith("☐ ") || line.startsWith("☑ ")) &&
                             (deletedPos - lineStart) < 2
                         ) {
@@ -377,12 +467,22 @@ fun NoteEditorScreen(
                             content = TextFieldValue(updated, TextRange(lineStart))
                             return@BasicTextField
                         }
+
+                        // 2. Style Prefixes (#, ##, |)
+                        val stylePrefixes = listOf("# ", "## ", "| ")
+                        stylePrefixes.find { line.startsWith(it) }?.let { prefix ->
+                            if ((deletedPos - lineStart) < prefix.length) {
+                                val updated = oldText.substring(0, lineStart) + oldText.substring(lineStart + prefix.length)
+                                content = TextFieldValue(updated, TextRange(lineStart))
+                                return@BasicTextField
+                            }
+                        }
                     }
 
                     content = newValue
                 },
                 onTextLayout         = { textLayoutResult = it },
-                visualTransformation = checklistTransformation,
+                visualTransformation = noteVisualTransformation,
                 textStyle = TextStyle(
                     fontSize   = 16.sp,
                     color      = onBg,
@@ -404,27 +504,39 @@ fun NoteEditorScreen(
                 decorationBox = { innerTextField ->
                     Box {
                         textLayoutResult?.let { layout ->
-                            val text  = content.text
-                            val lines = text.split('\n')
-                            var currentOffset = 0
-                            lines.forEachIndexed { i, line ->
-                                if (line.startsWith("☐ ") || line.startsWith("☑ ")) {
-                                    val lineInLayout = layout.getLineForOffset(currentOffset)
-                                    if (lineInLayout < layout.lineCount) {
-                                        val topPx    = layout.getLineTop(lineInLayout)
-                                        val bottomPx = layout.getLineBottom(lineInLayout)
-                                        val centerDp = with(density) { ((topPx + bottomPx) / 2).toDp() }
-                                        val cbSize   = 18.dp
+                            val layoutText = layout.layoutInput.text.text
+                            var logicalLineIndex = 0
+                            var charIndex = 0
+                            while (charIndex < layoutText.length) {
+                                val isChecked = layoutText.startsWith("☑ ", charIndex)
+                                val isUnchecked = layoutText.startsWith("☐ ", charIndex)
+
+                                if (isChecked || isUnchecked) {
+                                    val lineInLayout = layout.getLineForOffset(charIndex)
+                                    val topPx = layout.getLineTop(lineInLayout)
+                                    val bottomPx = layout.getLineBottom(lineInLayout)
+                                    val centerDp = with(density) { ((topPx + bottomPx) / 2).toDp() }
+                                    val cbSize = 18.dp
+
+                                    val currentLine = logicalLineIndex
+                                    key(charIndex) {
                                         NoteCheckbox(
-                                            checked         = line.startsWith("☑ "),
-                                            onCheckedChange = { toggleLine(i) },
-                                            modifier        = Modifier
-                                                .offset(x = 0.dp, y = centerDp - (cbSize / 2))
+                                            checked = isChecked,
+                                            onCheckedChange = { toggleLine(currentLine) },
+                                            modifier = Modifier
+                                                .offset(
+                                                    x = 0.dp,
+                                                    y = centerDp - (cbSize / 2) + 1.5.dp
+                                                )
                                                 .size(cbSize)
                                         )
                                     }
                                 }
-                                currentOffset += line.length + 1
+
+                                val nextNewline = layoutText.indexOf('\n', charIndex)
+                                if (nextNewline == -1) break
+                                charIndex = nextNewline + 1
+                                logicalLineIndex++
                             }
                         }
                         Box(modifier = Modifier.fillMaxSize()) {

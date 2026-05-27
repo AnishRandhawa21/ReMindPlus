@@ -11,12 +11,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.RadioButtonChecked
 import androidx.compose.material.icons.outlined.AutoFixNormal
 import androidx.compose.material.icons.outlined.Brush         // highlighter icon
 import androidx.compose.material.icons.outlined.Create
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.FormatListBulleted
+import androidx.compose.material.icons.outlined.FormatSize
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Undo
 import androidx.compose.material3.*
@@ -51,10 +52,13 @@ fun NoteEditorToolbar(
     onUndo            : () -> Unit,
     onColorPick       : (Color) -> Unit,
     onStrokeWidth     : (Float) -> Unit,
+    onStyleSelect     : (String) -> Unit,
     modifier          : Modifier = Modifier,
 ) {
     val surfaceVar = MaterialTheme.colorScheme.surfaceVariant
     val outline    = MaterialTheme.colorScheme.outlineVariant
+
+    var showStylePicker by remember { mutableStateOf(false) }
 
     Box(modifier = modifier) {
         AnimatedContent(
@@ -76,6 +80,7 @@ fun NoteEditorToolbar(
                     onEnterHighlight  = onEnterHighlight,
                     onExitHighlight   = onExitHighlight,
                     onEnterDraw       = onEnterDraw,
+                    onShowStylePicker = { showStylePicker = true }
                 )
 
                 // Highlight mode reuses the TEXT toolbar layout but marks the
@@ -90,6 +95,7 @@ fun NoteEditorToolbar(
                     onEnterHighlight  = onEnterHighlight,
                     onExitHighlight   = onExitHighlight,
                     onEnterDraw       = onEnterDraw,
+                    onShowStylePicker = { showStylePicker = true }
                 )
 
                 EditorMode.DRAW -> DrawModeToolbar(
@@ -104,6 +110,16 @@ fun NoteEditorToolbar(
                 )
             }
         }
+    }
+
+    if (showStylePicker) {
+        StylePickerDialog(
+            onStyleSelected = {
+                onStyleSelect(it)
+                showStylePicker = false
+            },
+            onDismiss = { showStylePicker = false }
+        )
     }
 }
 
@@ -128,6 +144,7 @@ private fun TextModeToolbar(
     onEnterHighlight  : () -> Unit,
     onExitHighlight   : () -> Unit,
     onEnterDraw       : () -> Unit,
+    onShowStylePicker : () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -139,6 +156,14 @@ private fun TextModeToolbar(
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment     = Alignment.CenterVertically
     ) {
+        // ── Text Styles ──────────────────────────────────────────────────────
+        IconToolButton(
+            icon               = Icons.Outlined.FormatSize,
+            contentDescription = "Text style",
+            onClick            = onShowStylePicker
+        )
+        ToolbarDivider(outline)
+
         // ── Bullet list ─────────────────────────────────────────────────────
         IconToolButton(
             icon               = Icons.Outlined.FormatListBulleted,
@@ -161,7 +186,7 @@ private fun TextModeToolbar(
             modifier = Modifier.size(48.dp)
         ) {
             Icon(
-                imageVector        = Icons.Default.RadioButtonUnchecked,
+                imageVector        = Icons.Default.RadioButtonChecked,
                 contentDescription = "Checklist",
                 tint               = MaterialTheme.colorScheme.onSurface,
                 modifier           = Modifier.size(20.dp)
@@ -495,6 +520,54 @@ private fun StrokeThicknessButton(
                 .clip(CircleShape)
                 .background(color)
         )
+    }
+}
+
+@Composable
+private fun StylePickerDialog(
+    onStyleSelected : (String) -> Unit,
+    onDismiss       : () -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape           = RoundedCornerShape(20.dp),
+            color           = MaterialTheme.colorScheme.surface,
+            tonalElevation  = 6.dp,
+            shadowElevation = 8.dp,
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .width(IntrinsicSize.Max)
+            ) {
+                Text(
+                    text  = "Text Style",
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    modifier = Modifier.padding(bottom = 12.dp, start = 8.dp)
+                )
+
+                val styles = listOf(
+                    "H1 Title" to "# ",
+                    "H2 Subtitle" to "## ",
+                    "Note Bar" to "| "
+                )
+
+                styles.forEach { (label, prefix) ->
+                    TextButton(
+                        onClick = { onStyleSelected(prefix) },
+                        modifier = Modifier.fillMaxWidth(),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text  = label,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
