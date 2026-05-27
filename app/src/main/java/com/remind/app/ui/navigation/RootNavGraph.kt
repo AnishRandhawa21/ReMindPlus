@@ -1,10 +1,7 @@
 package com.remind.app.ui.navigation
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -20,18 +17,30 @@ import io.github.jan.supabase.auth.status.SessionStatus
 @Composable
 fun RootNavGraph() {
     val viewModel: LoginViewModel = viewModel()
-    val sessionStatus by viewModel.sessionStatus.collectAsState()
+    val sessionStatus by viewModel.sessionStatus.collectAsStateWithLifecycle()
 
-    // While session is initializing, don't show any UI (Splash Screen is visible)
-    if (sessionStatus is SessionStatus.Initializing) return
-
-    val navController = rememberNavController()
-    val startRoute = remember(sessionStatus) {
-        when (sessionStatus) {
-            is SessionStatus.Authenticated -> Routes.MAIN
-            else -> Routes.LOGIN
+    // track if we've ever successfully loaded the session state
+    var isAuthInitialized by rememberSaveable { mutableStateOf(false) }
+    
+    LaunchedEffect(sessionStatus) {
+        if (sessionStatus !is SessionStatus.Initializing) {
+            isAuthInitialized = true
         }
     }
+
+    // Only show nothing (keep Splash) until the very first auth state is known.
+    // After that, we keep the NavHost in composition even if status briefly 
+    // changes to Initializing (e.g. during a refresh or background resume).
+    if (!isAuthInitialized && sessionStatus is SessionStatus.Initializing) return
+
+    val navController = rememberNavController()
+
+    // Determine the start destination ONLY ONCE when the NavHost is first created.
+    // This prevents the NavHost from resetting its backstack during status flickers.
+    val startRoute = remember {
+        if (sessionStatus is SessionStatus.Authenticated) Routes.MAIN else Routes.LOGIN
+    }
+
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
 
     NavHost(

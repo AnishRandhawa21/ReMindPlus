@@ -18,11 +18,6 @@ class LoginViewModel(
 
     // Supabase session state
     val sessionStatus: StateFlow<SessionStatus> = SupabaseClient.client.auth.sessionStatus
-        .stateIn(
-            scope         = viewModelScope,
-            started       = SharingStarted.WhileSubscribed(5000),
-            initialValue  = SessionStatus.Initializing,
-        )
 
     // True while the Google sign-in flow is in flight
     private val _isLoading = MutableStateFlow(false)

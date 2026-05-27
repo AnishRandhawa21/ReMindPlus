@@ -532,7 +532,7 @@ fun SyncStatusItem(
         Surface(
             onClick = onSyncClick,
             enabled = !isSyncing,
-            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+            color = MaterialTheme.colorScheme.primary,
             shape = RoundedCornerShape(12.dp)
         ) {
             Row(
@@ -544,20 +544,20 @@ fun SyncStatusItem(
                     CircularProgressIndicator(
                         modifier = Modifier.size(14.dp),
                         strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
                     Icon(
                         Icons.Rounded.Sync,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(16.dp)
                     )
                 }
                 Text(
                     text = if (isSyncing) "Syncing" else "Sync",
                     style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.onPrimary,
                     fontWeight = FontWeight.ExtraBold
                 )
             }
@@ -648,7 +648,7 @@ fun PermissionItem(
         Icon(
             icon,
             contentDescription = null,
-            tint = if (isGranted) AestheticGreen else MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier
                 .size(24.dp)
                 .iconAttention(isGranted)
@@ -670,7 +670,7 @@ fun PermissionItem(
             Icon(
                 Icons.Rounded.CheckCircle,
                 contentDescription = "Granted",
-                tint = AestheticGreen,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(24.dp)
             )
         } else {
