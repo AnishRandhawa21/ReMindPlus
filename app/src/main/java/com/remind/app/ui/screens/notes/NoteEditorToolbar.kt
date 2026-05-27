@@ -17,8 +17,8 @@ import androidx.compose.material.icons.outlined.Brush         // highlighter ico
 import androidx.compose.material.icons.outlined.Create
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.FormatListBulleted
+import androidx.compose.material.icons.outlined.FormatListNumbered
 import androidx.compose.material.icons.outlined.FormatSize
-import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Undo
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -172,11 +172,11 @@ private fun TextModeToolbar(
         )
         ToolbarDivider(outline)
 
-        // ── Dash ────────────────────────────────────────────────────────────
+        // ── Numbered list ───────────────────────────────────────────────────
         IconToolButton(
-            icon               = Icons.Outlined.Remove,
-            contentDescription = "Insert dash",
-            onClick            = { onInsert("– ") }
+            icon               = Icons.Outlined.FormatListNumbered,
+            contentDescription = "Insert numbered list",
+            onClick            = { onInsert("1. ") }
         )
         ToolbarDivider(outline)
 

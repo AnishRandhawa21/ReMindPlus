@@ -206,6 +206,14 @@ fun NoteEditorScreen(
                                 append(line.substring(2))
                             }
                         }
+                        line.getOrNull(0)?.isDigit() == true && line.contains(". ") && line.substringBefore(". ").all { it.isDigit() } -> {
+                            // Numbered list: style the number + dot
+                            val prefix = line.substringBefore(". ") + ". "
+                            withStyle(SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold)) {
+                                append(prefix)
+                            }
+                            append(line.substring(prefix.length))
+                        }
                         else -> append(line)
                     }
                     if (i < lines.size - 1) append("\n")
@@ -378,10 +386,18 @@ fun NoteEditorScreen(
                 
                 // If line already starts with a prefix, remove it first? 
                 // Or just insert at start. Let's replace if it's one of ours.
-                val knownPrefixes = listOf("# ", "## ", "| ", "• ", "– ", "☐ ", "☑ ")
+                val knownPrefixes = listOf("# ", "## ", "| ", "• ", "☐ ", "☑ ")
                 var newLine = currentLine
                 knownPrefixes.find { currentLine.startsWith(it) }?.let {
                     newLine = currentLine.substring(it.length)
+                }
+                
+                // Also check for numbered list prefix "1. ", "2. ", etc.
+                if (newLine.getOrNull(0)?.isDigit() == true && newLine.contains(". ")) {
+                    val prefixPart = newLine.substringBefore(". ")
+                    if (prefixPart.all { it.isDigit() }) {
+                        newLine = newLine.substring(prefixPart.length + 2)
+                    }
                 }
                 
                 val newText = text.substring(0, lineStart) + prefix + newLine + text.substring(lineStart + currentLine.length)
@@ -429,18 +445,33 @@ fun NoteEditorScreen(
                         val textBefore = newText.substring(0, pos)
                         val lineStart  = textBefore.lastIndexOf('\n') + 1
                         val line       = textBefore.substring(lineStart)
-                        val prefixes   = listOf("• ", "– ", "☐ ", "☑ ", "# ", "## ", "| ")
-                        val prefix     = prefixes.find { line.startsWith(it) }
+                        val prefixes   = listOf("• ", "☐ ", "☑ ", "# ", "## ", "| ")
+                        val prefix     = prefixes.find { line.startsWith(it) } ?: run {
+                            // Check for numbered list
+                            if (line.getOrNull(0)?.isDigit() == true && line.contains(". ")) {
+                                val p = line.substringBefore(". ") + ". "
+                                if (p.dropLast(2).all { it.isDigit() }) p else null
+                            } else null
+                        }
 
                         if (prefix != null) {
-                            if (line.trim() in listOf("•", "–", "☐", "☑", "#", "##", "|")) {
+                            val isNumbered = prefix.contains(". ")
+                            val lineContent = line.substring(prefix.length).trim()
+                            
+                            if (lineContent.isEmpty()) {
+                                // Deleting an empty list item — remove prefix
                                 val updated = newText.substring(0, lineStart) + newText.substring(pos + 1)
                                 content = TextFieldValue(updated, TextRange(lineStart))
                                 return@BasicTextField
                             } else {
+                                // Continue list
                                 val newPrefix = when {
                                     prefix.contains("☐") || prefix.contains("☑") -> "☐ "
                                     prefix == "# " || prefix == "## " || prefix == "| " -> prefix
+                                    isNumbered -> {
+                                        val num = prefix.substringBefore(". ").toIntOrNull() ?: 1
+                                        "${num + 1}. "
+                                    }
                                     else -> prefix
                                 }
                                 val updated   = newText.substring(0, pos + 1) + newPrefix + newText.substring(pos + 1)
@@ -468,9 +499,16 @@ fun NoteEditorScreen(
                             return@BasicTextField
                         }
 
-                        // 2. Style Prefixes (#, ##, |)
-                        val stylePrefixes = listOf("# ", "## ", "| ")
-                        stylePrefixes.find { line.startsWith(it) }?.let { prefix ->
+                        // 2. Style Prefixes (#, ##, |, numbered)
+                        val stylePrefixes = listOf("# ", "## ", "| ", "• ", "☐ ", "☑ ")
+                        var foundPrefix: String? = stylePrefixes.find { line.startsWith(it) }
+                        
+                        if (foundPrefix == null && line.getOrNull(0)?.isDigit() == true && line.contains(". ")) {
+                            val p = line.substringBefore(". ") + ". "
+                            if (p.dropLast(2).all { it.isDigit() }) foundPrefix = p
+                        }
+
+                        foundPrefix?.let { prefix ->
                             if ((deletedPos - lineStart) < prefix.length) {
                                 val updated = oldText.substring(0, lineStart) + oldText.substring(lineStart + prefix.length)
                                 content = TextFieldValue(updated, TextRange(lineStart))
@@ -526,7 +564,7 @@ fun NoteEditorScreen(
                                             modifier = Modifier
                                                 .offset(
                                                     x = 0.dp,
-                                                    y = centerDp - (cbSize / 2) + 1.5.dp
+                                                    y = centerDp - (cbSize / 2) + 2.3.dp
                                                 )
                                                 .size(cbSize)
                                         )

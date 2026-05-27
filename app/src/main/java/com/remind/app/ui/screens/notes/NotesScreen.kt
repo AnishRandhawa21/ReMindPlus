@@ -216,18 +216,47 @@ fun NoteCard(
                 buildAnnotatedString {
                     val lines = note.content.trim().split('\n')
                     lines.forEachIndexed { i, line ->
-                        if (line.startsWith("☐ ")) {
-                            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                                append("○ ")
+                        when {
+                            line.startsWith("# ") -> {
+                                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                                    append(line.substring(2))
+                                }
                             }
-                            append(line.substring(2))
-                        } else if (line.startsWith("☑ ")) {
-                            withStyle(SpanStyle(color = CharcoalMedium.copy(alpha = 0.5f))) {
-                                append("◉ ")
+                            line.startsWith("## ") -> {
+                                withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) {
+                                    append(line.substring(3))
+                                }
+                            }
+                            line.startsWith("| ") -> {
+                                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                                    append("| ")
+                                }
                                 append(line.substring(2))
                             }
-                        } else {
-                            append(line)
+                            line.startsWith("☐ ") -> {
+                                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                                    append("○ ")
+                                }
+                                append(line.substring(2))
+                            }
+                            line.startsWith("☑ ") -> {
+                                withStyle(SpanStyle(color = CharcoalMedium.copy(alpha = 0.5f))) {
+                                    append("◉ ")
+                                    append(line.substring(2))
+                                }
+                            }
+                            line.getOrNull(0)?.isDigit() == true && line.contains(". ") -> {
+                                val prefix = line.substringBefore(". ") + ". "
+                                if (prefix.dropLast(2).all { it.isDigit() }) {
+                                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                                        append(prefix)
+                                    }
+                                    append(line.substring(prefix.length))
+                                } else {
+                                    append(line)
+                                }
+                            }
+                            else -> append(line)
                         }
                         if (i < lines.size - 1) append("\n")
                     }
