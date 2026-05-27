@@ -1,61 +1,68 @@
 package com.remind.app.ui.animation
 
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.ui.graphics.TransformOrigin
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Easing curves
+// Easing curves (Material 3 Emphasized / Decelerate)
 // ─────────────────────────────────────────────────────────────────────────────
 
-// iOS sheet curve — explosive start, perfectly soft landing
+// Emphasized — standard motion for large elements
+private val emphasized = CubicBezierEasing(0.2f, 0.0f, 0f, 1.0f)
+
+// Standard Decelerate
+private val decelerate = CubicBezierEasing(0.0f, 0.0f, 0.2f, 1.0f)
+
+// iOS-style sheet curve
 private val sheetSpring = CubicBezierEasing(0.32f, 0.72f, 0f, 1f)
-
-// Standard ease-in for exits
-private val easeIn = CubicBezierEasing(0.4f, 0f, 1f, 1f)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // OPEN: FAB tap → editor
 //
-// Editor slides up from bottom (full height) + fades in.
-// Notes screen fades out fast — it's not the focus.
+// The editor expands from the bottom-right (where the FAB is).
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Editor arrives from bottom — feels like a real sheet
 val fabExpandEnter: EnterTransition =
+    fadeIn(animationSpec = tween(300, easing = LinearEasing)) +
+    scaleIn(
+        animationSpec = tween(450, easing = emphasized),
+        initialScale = 0.85f,
+        transformOrigin = TransformOrigin(0.9f, 0.9f) // Expand from FAB area
+    ) +
     slideInVertically(
-        animationSpec = tween(durationMillis = 400, easing = sheetSpring),
-        initialOffsetY = { it }                          // full off-screen start
-    ) + fadeIn(
-        animationSpec = tween(durationMillis = 200, easing = sheetSpring)
+        animationSpec = tween(450, easing = emphasized),
+        initialOffsetY = { it / 6 } // Subtle lift
     )
 
-// Notes screen steps back quietly — editor is the star
 val fabCollapseExit: ExitTransition =
-    fadeOut(animationSpec = tween(durationMillis = 150, easing = easeIn))
+    fadeOut(animationSpec = tween(200, easing = decelerate)) +
+    scaleOut(
+        animationSpec = tween(200, easing = decelerate),
+        targetScale = 0.95f
+    )
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CLOSE: back navigation → notes screen
 //
-// KEY INSIGHT: editor does NOT slide — it just fades out instantly.
-// Only the notes screen moves (slides up slightly to meet the gap).
-// Single screen animating = zero compositing conflict = buttery 120hz.
+// Editor shrinks back towards the FAB area.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Editor dissolves — fast, out of the way, no competing motion
 val fabPopExit: ExitTransition =
-    fadeOut(animationSpec = tween(durationMillis = 180, easing = easeIn))
+    fadeOut(animationSpec = tween(350, easing = decelerate)) +
+    scaleOut(
+        animationSpec = tween(350, easing = emphasized),
+        targetScale = 0.85f,
+        transformOrigin = TransformOrigin(0.9f, 0.9f)
+    ) +
+    slideOutVertically(
+        animationSpec = tween(350, easing = emphasized),
+        targetOffsetY = { it / 8 }
+    )
 
-// Notes screen rises up to fill the space — this is what the eye follows
 val fabPopEnter: EnterTransition =
-    slideInVertically(
-        animationSpec = tween(durationMillis = 380, easing = sheetSpring),
-        initialOffsetY = { (it * 0.08f).toInt() }       // subtle — just 8% upward nudge
-    ) + fadeIn(
-        animationSpec = tween(durationMillis = 220, easing = sheetSpring)
+    fadeIn(animationSpec = tween(300, easing = emphasized)) +
+    scaleIn(
+        animationSpec = tween(300, easing = emphasized),
+        initialScale = 0.95f
     )

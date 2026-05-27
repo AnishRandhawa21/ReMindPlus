@@ -13,6 +13,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -20,7 +21,7 @@ import com.remind.app.data.local.entity.ReminderEntity
 import java.text.SimpleDateFormat
 import java.util.*
 import com.remind.app.ui.theme.*
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,8 +90,8 @@ fun AddReminderBottomSheet(
 
     // ── Sheet state + coroutine scope for sequenced animation ─────────────────
     val sheetState    = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val scope         = rememberCoroutineScope()
     val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     val bgColor        = MaterialTheme.colorScheme.background
     val contentBoxColor = MaterialTheme.colorScheme.surface
@@ -263,10 +264,10 @@ fun AddReminderBottomSheet(
     // This means keyboard animates up WITH the sheet already in position —
     // no double movement, no jump.
     LaunchedEffect(Unit) {
-        scope.launch {
-            sheetState.expand()       // wait for sheet settle
-            focusRequester.requestFocus() // keyboard now animates once, cleanly
-        }
+        // Wait for sheet to start showing and settle
+        delay(400) 
+        focusRequester.requestFocus()
+        keyboardController?.show()
     }
 
     // ── Date Picker ───────────────────────────────────────────────────────────

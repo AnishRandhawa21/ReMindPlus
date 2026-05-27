@@ -1,6 +1,7 @@
 package com.remind.app.ui.screens.notes
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -123,16 +124,28 @@ fun NotesScreen(
                     verticalItemSpacing = 12.dp,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(notes, key = { it.id }) { note ->
-                        NoteCard(
-                            note        = note,
-                            cardColor   = noteColor(note.id),
-                            onClick     = {
-                                navController.navigate("note_editor/${note.id}")
-                            },
-                            onPinClick  = { viewModel.togglePinnedNote(note) },
-                            onDeleteClick = { viewModel.deleteNote(note) }
-                        )
+                    items(notes.size, key = { notes[it].id }) { index ->
+                        val note = notes[index]
+                        
+                        // Cascade entry animation
+                        val visible = remember { mutableStateOf(false) }
+                        LaunchedEffect(Unit) { visible.value = true }
+
+                        AnimatedVisibility(
+                            visible = visible.value,
+                            enter = fadeIn(tween(400, delayMillis = index * 30)) + 
+                                    slideInVertically(tween(400, delayMillis = index * 30)) { it / 8 }
+                        ) {
+                            NoteCard(
+                                note        = note,
+                                cardColor   = noteColor(note.id),
+                                onClick     = {
+                                    navController.navigate("note_editor/${note.id}")
+                                },
+                                onPinClick  = { viewModel.togglePinnedNote(note) },
+                                onDeleteClick = { viewModel.deleteNote(note) }
+                            )
+                        }
                     }
                 }
             }

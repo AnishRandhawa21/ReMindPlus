@@ -1,11 +1,14 @@
 package com.remind.app.ui.screens.reminders
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,8 +21,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -29,19 +36,20 @@ import androidx.compose.ui.unit.sp
 import com.remind.app.data.local.entity.ReminderEntity
 import com.remind.app.ui.theme.*
 import com.remind.app.utils.DateUtils
+import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
-import androidx.compose.ui.platform.LocalContext
+
 // ── Palette lists (pastel card backgrounds – fine on both themes) ─────────────
 
 private val quickNoteColors = listOf(
     PastelGreenLight, PastelBlueLight, PastelPinkLight,
-    PastelLavenderLight, PastelPeachLight,
+    PastelLavenderLight, PastelPeachLight, PastelYellowLight
 )
 
 private val timelineCardColors = listOf(
     PastelBlueLight, PastelGreenLight, PastelPeachLight,
-    PastelLavenderLight, PastelPinkLight,
+    PastelLavenderLight, PastelPinkLight, PastelYellowLight
 )
 
 // ── Day chip data ─────────────────────────────────────────────────────────────
@@ -91,6 +99,7 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
     val scheduledReminders by viewModel.scheduledReminders.collectAsState()
 
     val context = LocalContext.current
+    val density = LocalDensity.current
 
     var showAddDialog   by remember { mutableStateOf(false) }
     var editingReminder by remember { mutableStateOf<ReminderEntity?>(null) }
@@ -224,13 +233,22 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
                         .padding(horizontal = 24.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                        quickNotes.forEachIndexed { i, note ->
+                    quickNotes.forEachIndexed { i, note ->
+                        val visible = remember { mutableStateOf(false) }
+                        LaunchedEffect(Unit) { visible.value = true }
+
+                        AnimatedVisibility(
+                            visible = visible.value,
+                            enter = fadeIn(tween(400, delayMillis = i * 40)) +
+                                    scaleIn(tween(400, delayMillis = i * 40), initialScale = 0.9f)
+                        ) {
                             Box {
+                                val cardBg = quickNoteColors[kotlin.math.abs(note.id.hashCode()) % quickNoteColors.size]
                                 QuickNoteCard(
                                     reminder = note,
-                                    bgColor = quickNoteColors[i % quickNoteColors.size],
+                                    bgColor = cardBg,
                                     onLongPress = { menuReminder = note },
-                                    onToggleComplete = { viewModel.toggleReminderCompleted(context,note) },
+                                    onToggleComplete = { viewModel.toggleReminderCompleted(context, note) },
                                     onClick = { editingReminder = note }
                                 )
 
@@ -243,15 +261,13 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
                                         menuReminder = null
                                     },
                                     onDelete = {
-                                        viewModel.deleteReminder(
-                                            context,
-                                            note
-                                        )
+                                        viewModel.deleteReminder(context, note)
                                         menuReminder = null
                                     }
                                 )
                             }
                         }
+                    }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
             }
@@ -301,15 +317,46 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 96.dp, top = 4.dp)
                     ) {
-                        groupedTimeline.forEach { (timeLabel, timeReminders) ->
-                            item(key = timeLabel) {
+                        val groupedList = groupedTimeline.toList()
+                        itemsIndexed(
+                            items = groupedList, 
+                            key = { _, (time, _) -> "${selectedChip.fullDate.timeInMillis}_$time" }
+                        ) { index, (timeLabel, timeReminders) ->
+                            // Use the item's unique key to trigger animation
+                            // This ensures the animation runs every time a "new" item (different day/time) appears
+                            var isVisible by remember { mutableStateOf(false) }
+                            LaunchedEffect(selectedIdx) { 
+                                // Reset visibility and then trigger it to ensure animation runs on day change
+                                isVisible = false
+                                delay(index * 30L)
+                                isVisible = true 
+                            }
+
+                            val alpha by animateFloatAsState(
+                                targetValue = if (isVisible) 1f else 0f,
+                                animationSpec = tween(500),
+                                label = "entryAlpha"
+                            )
+                            val offsetY by animateDpAsState(
+                                targetValue = if (isVisible) 0.dp else 24.dp,
+                                animationSpec = tween(500, easing = EaseOutBack),
+                                label = "entryOffset"
+                            )
+
+                            Box(modifier = Modifier
+                                .animateItem() // Smoothly handle list reordering/deletions
+                                .graphicsLayer(
+                                    alpha = alpha, 
+                                    translationY = with(density) { offsetY.toPx() }
+                                )
+                            ) {
                                 TimelineRow(
-                                    timeLabel      = timeLabel,
-                                    reminders      = timeReminders,
-                                    onTogglePin    = { r -> viewModel.togglePinnedReminder(r) },
-                                    onDelete       = { r -> viewModel.deleteReminder(context, r) },
-                                    onToggleComplete = { r -> viewModel.toggleReminderCompleted(context,r) },
-                                    onClick        = { r -> editingReminder = r }
+                                    timeLabel = timeLabel,
+                                    reminders = timeReminders,
+                                    onTogglePin = { r -> viewModel.togglePinnedReminder(r) },
+                                    onDelete = { r -> viewModel.deleteReminder(context, r) },
+                                    onToggleComplete = { r -> viewModel.toggleReminderCompleted(context, r) },
+                                    onClick = { r -> editingReminder = r }
                                 )
                             }
                         }
@@ -435,11 +482,10 @@ private fun TimelineRow(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            reminders.forEachIndexed { i, reminder ->
+            reminders.forEach { reminder ->
                 Box {
                     TimelineCard(
                         reminder = reminder,
-                        colorIndex = i,
                         onLongPress = { menuReminder = reminder },
                         onToggleComplete = { onToggleComplete(reminder) },
                         onClick = { onClick(reminder) }
@@ -534,12 +580,11 @@ private fun ReminderContextMenu(
 @Composable
 private fun TimelineCard(
     reminder: ReminderEntity,
-    colorIndex: Int,
     onLongPress: () -> Unit,
     onToggleComplete: () -> Unit,
     onClick: () -> Unit
 ) {
-    val cardBg = timelineCardColors[colorIndex % timelineCardColors.size]
+    val cardBg = timelineCardColors[kotlin.math.abs(reminder.id.hashCode()) % timelineCardColors.size]
 
     val reminderStatus = reminder.dueTime?.let {
         when {
@@ -561,15 +606,30 @@ private fun TimelineCard(
     val checkFill  = statusColor
     val checkMark  = CharcoalDark
 
+    val animatedScale by animateFloatAsState(
+        targetValue = if (reminder.isCompleted) 1.02f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy),
+        label = "scale"
+    )
+    val animatedOpacity by animateFloatAsState(
+        targetValue = if (reminder.isCompleted) 0.7f else 1f,
+        animationSpec = tween(300),
+        label = "opacity"
+    )
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .scale(animatedScale)
+            .graphicsLayer(alpha = animatedOpacity)
             .clip(RoundedCornerShape(18.dp))
             .background(cardBg)
             .combinedClickable(onClick = onClick, onLongClick = onLongPress)
             .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             // Circle checkbox
             Box(
                 modifier = Modifier
