@@ -1,5 +1,7 @@
 package com.remind.app.ui.screens.settings
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -27,11 +29,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.remind.app.BuildConfig
 import com.remind.app.ui.animation.*
@@ -44,6 +50,27 @@ fun SettingsScreen(
     val reminderCount by viewModel.reminderCount.collectAsState()
     val noteCount by viewModel.noteCount.collectAsState()
     val cloudSyncStatus by viewModel.cloudSyncStatus.collectAsState()
+
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+
+    // Refresh permissions when coming back to the screen
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.checkPermissions()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    val notificationLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { _ ->
+        viewModel.checkPermissions()
+    }
 
     if (viewModel.showLogoutWarning) {
         AlertDialog(
@@ -64,6 +91,32 @@ fun SettingsScreen(
                 }
             },
             shape = RoundedCornerShape(20.dp),
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    }
+
+    if (viewModel.showUsageDisclosure) {
+        AlertDialog(
+            onDismissRequest = { viewModel.showUsageDisclosure = false },
+            title = { Text("Usage Access Required", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
+            text = { 
+                Text(
+                    "ReMind+ uses Usage Access to monitor how long you spend on distracting apps and provide timely nudges to help you stay focused. \n\n" +
+                    "This data is processed locally on your device and is never shared with third parties or used for advertising.",
+                    style = MaterialTheme.typography.bodyMedium
+                ) 
+            },
+            confirmButton = {
+                Button(onClick = { viewModel.openUsageAccessSettings() }) {
+                    Text("Grant Permission")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.showUsageDisclosure = false }) {
+                    Text("Not Now")
+                }
+            },
+            shape = RoundedCornerShape(24.dp),
             containerColor = MaterialTheme.colorScheme.surface
         )
     }
@@ -144,6 +197,47 @@ fun SettingsScreen(
                     AccentColorSelectorItem(
                         selectedColorIndex = viewModel.accentColorIndex,
                         onColorSelected = { viewModel.updateAccentColor(it) }
+                    )
+                }
+            }
+
+            // ── PERMISSIONS SECTION ──────────────────────────────────────────
+            item {
+                SettingsSectionTitle(title = "Permissions & Privacy")
+                SettingsGroup {
+                    PermissionItem(
+                        icon = Icons.Rounded.Notifications,
+                        title = "Notifications",
+                        subtitle = "Required to show reminders and nudges",
+                        isGranted = viewModel.isNotificationPermissionGranted,
+                        onClick = {
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                                notificationLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                            }
+                        }
+                    )
+                    SettingsDivider()
+                    PermissionItem(
+                        icon = Icons.Rounded.Alarm,
+                        title = "Exact Alarms",
+                        subtitle = "Required for precise reminder timing",
+                        isGranted = viewModel.isExactAlarmPermissionGranted,
+                        onClick = { viewModel.openExactAlarmSettings() }
+                    )
+                    SettingsDivider()
+                    PermissionItem(
+                        icon = Icons.Rounded.ScreenLockRotation, // Representing screen/usage
+                        title = "Usage Access",
+                        subtitle = "Required to monitor distracting app usage",
+                        isGranted = viewModel.isUsageAccessPermissionGranted,
+                        onClick = { viewModel.requestUsageAccess() }
+                    )
+                    SettingsDivider()
+                    ActionSettingsItem(
+                        icon = Icons.Rounded.BatteryChargingFull,
+                        title = "Battery Optimization",
+                        subtitle = "Disable to ensure background reliability",
+                        onClick = { viewModel.openBatteryOptimizationSettings() }
                     )
                 }
             }
@@ -528,9 +622,73 @@ fun ToggleSettingsItem(
 }
 
 @Composable
+fun PermissionItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    isGranted: Boolean,
+    onClick: () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+                enabled = !isGranted
+            )
+            .settingsMorphClick(pressed = isPressed)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = if (isGranted) AestheticGreen else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .size(24.dp)
+                .iconAttention(isGranted)
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium)
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        
+        if (isGranted) {
+            Icon(
+                Icons.Rounded.CheckCircle,
+                contentDescription = "Granted",
+                tint = AestheticGreen,
+                modifier = Modifier.size(24.dp)
+            )
+        } else {
+            Text(
+                text = "Grant",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
 fun ActionSettingsItem(
     icon: ImageVector,
     title: String,
+    subtitle: String? = null,
     titleColor: Color = Color.Unspecified,
     onClick: () -> Unit
 ) {
@@ -556,12 +714,20 @@ fun ActionSettingsItem(
             modifier = Modifier.size(24.dp)
         )
         Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-            color = titleColor,
-            modifier = Modifier.weight(1f)
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                color = titleColor
+            )
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
         Icon(
             Icons.Rounded.ChevronRight,
             contentDescription = null,

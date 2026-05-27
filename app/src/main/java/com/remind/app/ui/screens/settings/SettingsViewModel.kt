@@ -4,10 +4,13 @@ import android.media.MediaPlayer
 import android.net.Uri
 import android.util.Log
 import android.app.Application
+import android.os.Build
+import android.os.Process
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.remind.app.data.remote.AuthManager
@@ -78,9 +81,80 @@ class SettingsViewModel(
     var notificationSound by mutableStateOf(preferenceManager.notificationSound)
     var accentColorIndex by mutableIntStateOf(preferenceManager.accentColor)
 
+    // --- Permission State ---
+    var isNotificationPermissionGranted by mutableStateOf(false)
+    var isExactAlarmPermissionGranted by mutableStateOf(false)
+    var isUsageAccessPermissionGranted by mutableStateOf(false)
+    var showUsageDisclosure by mutableStateOf(false)
+
+    init {
+        checkPermissions()
+    }
+
+    fun checkPermissions() {
+        val context = getApplication<Application>()
+        
+        // 1. Notification Permission
+        isNotificationPermissionGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.POST_NOTIFICATIONS
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+
+        // 2. Exact Alarm Permission
+        isExactAlarmPermissionGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val alarmManager = context.getSystemService(android.content.Context.ALARM_SERVICE) as android.app.AlarmManager
+            alarmManager.canScheduleExactAlarms()
+        } else {
+            true
+        }
+
+        // 3. Usage Access Permission
+        val appOps = context.getSystemService(android.content.Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+        val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            appOps.unsafeCheckOpNoThrow(
+                android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+                Process.myUid(),
+                context.packageName
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            appOps.checkOpNoThrow(
+                android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+                Process.myUid(),
+                context.packageName
+            )
+        }
+        isUsageAccessPermissionGranted = mode == android.app.AppOpsManager.MODE_ALLOWED
+    }
+
     fun updateTheme(newTheme: String) {
         theme = newTheme
         preferenceManager.theme = newTheme
+    }
+
+    fun requestUsageAccess() {
+        if (!isUsageAccessPermissionGranted) {
+            showUsageDisclosure = true
+        }
+    }
+
+    fun openUsageAccessSettings() {
+        showUsageDisclosure = false
+        val intent = android.content.Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS)
+        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        getApplication<Application>().startActivity(intent)
+    }
+
+    fun openExactAlarmSettings() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val intent = android.content.Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            getApplication<Application>().startActivity(intent)
+        }
     }
 
     fun updateAutoSync(enabled: Boolean) {
@@ -211,6 +285,19 @@ class SettingsViewModel(
             } finally {
                 isLoading = false
             }
+        }
+    }
+
+    fun openBatteryOptimizationSettings() {
+        try {
+            val intent = android.content.Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            getApplication<Application>().startActivity(intent)
+        } catch (e: Exception) {
+            // Fallback for some devices
+            val intent = android.content.Intent(android.provider.Settings.ACTION_SETTINGS)
+            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            getApplication<Application>().startActivity(intent)
         }
     }
 }

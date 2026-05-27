@@ -9,6 +9,7 @@ import android.media.AudioAttributes
 import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.remind.app.MainActivity
 import com.remind.app.R
 
@@ -90,13 +91,26 @@ object NotificationHelper {
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(title)
             .setContentText(message)
+            .setColor(ContextCompat.getColor(context, R.color.purple_500)) // Fallback, but we'll try to get dynamic color
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
-            .setSound(soundUri) // For pre-O devices
+            .setSound(soundUri) 
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .setLocalOnly(true)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+
+        // Try to use the user's selected accent color if possible
+        try {
+            val accentIndex = preferenceManager.accentColor
+            val aestheticColors = listOf(
+                0xFFA2D2FF.toInt(), 0xFFB5EAD7.toInt(), 0xFFFFB7B2.toInt(), 0xFFFFE0AC.toInt(),
+                0xFFC7CEEA.toInt(), 0xFFFFDAC1.toInt(), 0xFF9DD9D2.toInt(), 0xFFE0BBE4.toInt()
+            )
+            val selectedColor = aestheticColors.getOrElse(accentIndex) { 0xFFA2D2FF.toInt() }
+            builder.setColor(selectedColor)
+            builder.setColorized(true) // Makes the notification more "vibrant" on some devices
+        } catch (e: Exception) {}
 
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         try {

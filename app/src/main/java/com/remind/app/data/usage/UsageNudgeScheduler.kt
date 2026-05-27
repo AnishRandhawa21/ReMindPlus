@@ -18,7 +18,7 @@ object UsageNudgeScheduler {
     fun scheduleNudges(context: Context) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-        // 1. Periodic check every 15-20 minutes for continuous usage
+        // 1. Periodic check every 10-15 minutes for continuous usage
         val periodicIntent = Intent(context, UsageReminderReceiver::class.java).apply {
             action = UsageReminderReceiver.ACTION_PERIODIC_CHECK
         }
@@ -27,10 +27,13 @@ object UsageNudgeScheduler {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         
+        // Trigger the first check in 1 minute to handle cases where session is already long
+        val firstTrigger = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(1)
+        
         alarmManager.setInexactRepeating(
             AlarmManager.RTC_WAKEUP,
-            System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(15),
-            AlarmManager.INTERVAL_HALF_HOUR / 2, // Approx 15 mins
+            firstTrigger,
+            TimeUnit.MINUTES.toMillis(12), // Slightly more frequent (12 mins)
             periodicPendingIntent
         )
 
