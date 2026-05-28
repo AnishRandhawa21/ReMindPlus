@@ -7,15 +7,16 @@ import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.navigation.NavBackStackEntry
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-private const val TAB_TRANSITION_DURATION = 320
+private const val TAB_TRANSITION_DURATION = 400
 
 // Standard Material / iOS decelerate curve
 // Fast start → smooth settle. Same spec on enter so velocity feels consistent.
-private val tabEasing = CubicBezierEasing(0.4f, 0.0f, 0.2f, 1.0f)
+private val tabEasing = CubicBezierEasing(0.2f, 0.0f, 0.0f, 1.0f)
 
 // ─── Tab order ────────────────────────────────────────────────────────────────
 
@@ -37,13 +38,8 @@ fun AnimatedContentTransitionScope<NavBackStackEntry>.targetTabIsToTheRight(): B
 // ─── Enter transition ─────────────────────────────────────────────────────────
 
 /**
- * ONLY the entering screen moves.
- *
  * fromRight = true  → new screen slides in from the right  (going forward)
  * fromRight = false → new screen slides in from the left   (going back)
- *
- * Full-width slide so it arrives exactly where the exiting screen was —
- * no gap, no overlap feeling.
  */
 fun tabEnterTransition(fromRight: Boolean): EnterTransition {
     val sign = if (fromRight) 1f else -1f
@@ -56,14 +52,14 @@ fun tabEnterTransition(fromRight: Boolean): EnterTransition {
 // ─── Exit transition ──────────────────────────────────────────────────────────
 
 /**
- * The exiting screen does NOT slide — it stays in place and fades out.
- * This eliminates the overlap/crossing effect entirely.
- *
- * A short fade (not instant) keeps it from feeling like a hard cut
- * while the entering screen slides over it.
+ * The exiting screen slides out in the opposite direction.
  */
 fun tabExitTransition(toRight: Boolean): ExitTransition {
-    return fadeOut(
+    val sign = if (toRight) -1f else 1f
+    return slideOutHorizontally(
+        animationSpec = tween(TAB_TRANSITION_DURATION, easing = tabEasing),
+        targetOffsetX = { width -> (width * sign).toInt() }
+    ) + fadeOut(
         animationSpec = tween(TAB_TRANSITION_DURATION, easing = tabEasing),
         targetAlpha   = 0f
     )

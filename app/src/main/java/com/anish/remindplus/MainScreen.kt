@@ -20,6 +20,7 @@ import androidx.navigation.compose.rememberNavController
 import com.anish.remindplus.ui.components.BottomNavigationBar
 import com.anish.remindplus.ui.navigation.MainNavGraph
 import com.anish.remindplus.ui.navigation.Routes
+import com.anish.remindplus.ui.navigation.swipeToNavigate
 import com.anish.remindplus.utils.PreferenceManager
 
 // Routes where the bottom bar should be hidden
@@ -59,7 +60,9 @@ fun MainScreen() {
     }
 
     Scaffold(
-        modifier       = Modifier.fillMaxSize(),
+        modifier       = Modifier
+            .fillMaxSize()
+            .swipeToNavigate(navController),
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar      = {
             if (showBottomBar) {
