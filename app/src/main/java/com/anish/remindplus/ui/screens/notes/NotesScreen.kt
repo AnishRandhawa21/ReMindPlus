@@ -1,6 +1,8 @@
 package com.anish.remindplus.ui.screens.notes
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -37,6 +39,7 @@ import com.anish.remindplus.data.local.entity.NoteEntity
 import com.anish.remindplus.ui.navigation.Routes
 import com.anish.remindplus.ui.theme.*
 import com.anish.remindplus.ui.screens.notes.mapper.DrawingMapper
+import kotlinx.coroutines.delay
 
 // Gradient pairs for note cards — pairing light pastels with their standard versions
 private val noteCardGradients = listOf(
@@ -130,14 +133,25 @@ fun NotesScreen(
                     items(notes.size, key = { notes[it].id }) { index ->
                         val note = notes[index]
                         
-                        // Cascade entry animation
-                        val visible = remember { mutableStateOf(false) }
-                        LaunchedEffect(Unit) { visible.value = true }
+                        // Premium staggered reveal animation
+                        var visible by remember { mutableStateOf(false) }
+                        LaunchedEffect(Unit) {
+                            delay(index * 25L)
+                            visible = true
+                        }
 
                         AnimatedVisibility(
-                            visible = visible.value,
-                            enter = fadeIn(tween(400, delayMillis = index * 30)) + 
-                                    slideInVertically(tween(400, delayMillis = index * 30)) { it / 8 }
+                            visible = visible,
+                            enter = fadeIn(tween(350)) + 
+                                    scaleIn(
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioLowBouncy,
+                                            stiffness = Spring.StiffnessLow
+                                        ),
+                                        initialScale = 0.92f
+                                    ) +
+                                    slideInVertically(tween(450)) { it / 12 },
+                            exit = fadeOut(tween(200))
                         ) {
                             NoteCard(
                                 note        = note,
