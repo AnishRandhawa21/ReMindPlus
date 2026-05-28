@@ -12,7 +12,7 @@ plugins {
 }
 
 android {
-    namespace = "com.remind.app"
+    namespace = "com.anish.remindplus"
 
     compileSdk {
         version = release(36) {
@@ -21,11 +21,11 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.remind.app"
+        applicationId = "com.anish.remindplus"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 5
+        versionName = "1.0.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
