@@ -50,7 +50,7 @@ class StatsViewModel : ViewModel() {
                 withContext(Dispatchers.IO) {
                     val todayUsage = UsageStatsHelper.getTodayScreenTime(context)
                     val yesterdayUsage = UsageStatsHelper.getYesterdayScreenTime(context)
-                    val apps = UsageStatsHelper.getTopUsedApps(context, limit = 3)
+                    val apps = UsageStatsHelper.getTopUsedApps(context, limit = 5)
                     
                     val weekly = if (shouldFullReload) UsageStatsHelper.getWeeklyUsageStats(context) else null
                     val monthlyUsage = if (shouldFullReload) UsageStatsHelper.getMonthlyTotalUsage(context, filtered = false) else -1L

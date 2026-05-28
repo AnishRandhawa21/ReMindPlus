@@ -79,6 +79,8 @@ class SettingsViewModel(
     var notificationsEnabled by mutableStateOf(preferenceManager.notificationsEnabled)
     var notificationSound by mutableStateOf(preferenceManager.notificationSound)
     var accentColorIndex by mutableIntStateOf(preferenceManager.accentColor)
+    
+    val hasAskedNotificationPermission get() = preferenceManager.hasAskedNotificationPermission
 
     // --- Permission State ---
     var isNotificationPermissionGranted by mutableStateOf(false)
@@ -253,6 +255,7 @@ class SettingsViewModel(
             try {
                 reminderRepository.deleteAllReminders()
                 noteRepository.deleteAllNotes()
+                preferenceManager.hasAskedNotificationPermission = false
                 authManager.signOut()
                 showLogoutWarning = false
             } catch (e: Exception) {
@@ -298,5 +301,13 @@ class SettingsViewModel(
             intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
             getApplication<Application>().startActivity(intent)
         }
+    }
+
+    fun openAppSettings() {
+        val intent = android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = android.net.Uri.fromParts("package", getApplication<Application>().packageName, null)
+            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        getApplication<Application>().startActivity(intent)
     }
 }

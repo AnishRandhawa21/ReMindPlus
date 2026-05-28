@@ -3,6 +3,7 @@ package com.anish.remindplus.ui.animation
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import kotlinx.coroutines.delay
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -102,5 +103,45 @@ fun animateFloatAsStateWithDelay(
         targetValue = if (startAnimation) targetValue else 0f,
         animationSpec = tween(1500, easing = emphasized),
         label = "floatCounter"
+    )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Top Apps Horizontal Cascade
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+fun AppIconEntranceTransition(
+    index: Int,
+    content: @Composable () -> Unit
+) {
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(300L + (index * 40L))
+        visible = true
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(400, easing = emphasized)) +
+                scaleIn(tween(400, easing = emphasized), initialScale = 0.8f),
+        content = { content() }
+    )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Pill/Badge Pop
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+fun PillPopTransition(
+    visible: Boolean,
+    content: @Composable () -> Unit
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(300)) + expandHorizontally(expandFrom = Alignment.End),
+        exit = fadeOut(tween(200)) + shrinkHorizontally(shrinkTowards = Alignment.End),
+        content = { content() }
     )
 }

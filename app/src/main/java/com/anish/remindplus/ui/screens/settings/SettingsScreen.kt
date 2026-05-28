@@ -208,7 +208,11 @@ fun SettingsScreen(
                         isGranted = viewModel.isNotificationPermissionGranted,
                         onClick = {
                             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                                notificationLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                                if (viewModel.hasAskedNotificationPermission) {
+                                    viewModel.openAppSettings()
+                                } else {
+                                    notificationLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                                }
                             }
                         }
                     )

@@ -19,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -146,34 +147,154 @@ fun StatsScreen(viewModel: StatsViewModel = viewModel()) {
                     )
                 }
 
-                Text(
-                    text = "Top Used Apps",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
-                )
-
                 if (isReady && topApps.isEmpty()) {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(
-                            text = "No usage data found for today.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(16.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                    // No usage data found for today case
+                } else {
+                    TopAppsSection(isReady = isReady, topApps = topApps)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TopAppsSection(isReady: Boolean, topApps: List<AppUsageInfo>) {
+    var selectedIndex by remember { mutableIntStateOf(-1) }
+    
+    // Ensure selectedIndex is valid if data changes
+    LaunchedEffect(topApps) {
+        if (selectedIndex >= topApps.size && topApps.isNotEmpty()) {
+            selectedIndex = -1
+        }
+    }
+
+    Column(modifier = Modifier.padding(top = 8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Top Used Apps",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+
+            PillPopTransition(visible = isReady && selectedIndex in topApps.indices) {
+                Surface(
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    val appUsage = if (selectedIndex in topApps.indices) topApps[selectedIndex].totalTimeInForeground else 0L
+                    Text(
+                        text = UsageStatsHelper.formatScreenTime(appUsage),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .animateContentSize(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioLowBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                ),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            border = CardDefaults.outlinedCardBorder()
+        ) {
+            Row(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (!isReady) {
+                    repeat(6) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    RoundedCornerShape(12.dp)
+                                )
                         )
                     }
-                } else if (!isReady) {
-                    repeat(3) {
-                        AppUsageItem(AppUsageInfo("", "...", displayTodayMillis / (it + 2), null))
-                    }
                 } else {
-                    topApps.forEach { app ->
-                        AppUsageItem(app = app)
+                    topApps.take(6).forEachIndexed { index, app ->
+                        val isSelected = selectedIndex == index
+                        val scale by animateFloatAsState(if (isSelected) 1.15f else 1f)
+                        
+                        AppIconEntranceTransition(index = index) {
+                            Box(
+                                modifier = Modifier
+                                    .size(54.dp)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(
+                                        if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                        else Color.Transparent
+                                    )
+                                    .clickable { 
+                                        selectedIndex = if (isSelected) -1 else index 
+                                    }
+                                    .padding(4.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (app.appIcon != null) {
+                                    Image(
+                                        bitmap = app.appIcon,
+                                        contentDescription = app.appName,
+                                        modifier = Modifier
+                                            .size(42.dp)
+                                            .scale(scale)
+                                            .clip(RoundedCornerShape(10.dp)),
+                                        contentScale = ContentScale.Fit
+                                    )
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(42.dp)
+                                            .scale(scale)
+                                            .background(
+                                                MaterialTheme.colorScheme.surfaceVariant,
+                                                RoundedCornerShape(10.dp)
+                                            )
+                                    )
+                                }
+                            }
+                        }
                     }
+                }
+            }
+            
+            AnimatedVisibility(
+                visible = isReady && selectedIndex in topApps.indices,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                if (selectedIndex in topApps.indices) {
+                    Text(
+                        text = topApps[selectedIndex].appName,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
                 }
             }
         }
@@ -452,72 +573,6 @@ fun MonthlySummaryCard(monthlyUsageMillis: Long, totalMonthHours: Int) {
                 text = "Screen Time spent vs Total hours in Month",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
-            )
-        }
-    }
-}
-
-@Composable
-fun AppUsageItem(app: AppUsageInfo) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = CardDefaults.outlinedCardBorder()
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(12.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (app.appIcon != null) {
-                Image(
-                    bitmap = app.appIcon,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(10.dp)),
-                    contentScale = ContentScale.Fit
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .background(
-                            MaterialTheme.colorScheme.surfaceVariant,
-                            RoundedCornerShape(10.dp)
-                        )
-                )
-            }
-
-            Column(
-                modifier = Modifier
-                    .padding(start = 12.dp)
-                    .weight(1f)
-            ) {
-                Text(
-                    text = if (app.appName.isBlank()) "..." else app.appName,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = UsageStatsHelper.formatScreenTime(app.totalTimeInForeground),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            
-            Icon(
-                imageVector = Icons.Default.Analytics,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
             )
         }
     }

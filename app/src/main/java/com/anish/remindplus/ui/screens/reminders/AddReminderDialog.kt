@@ -1,10 +1,16 @@
 package com.anish.remindplus.ui.screens.reminders
 
+import android.app.AlarmManager
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.rounded.Alarm
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -13,8 +19,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.anish.remindplus.data.local.entity.ReminderEntity
@@ -31,6 +39,7 @@ fun AddReminderBottomSheet(
     onDismiss: () -> Unit,
     onSave: (title: String, description: String, dueTime: Long?) -> Unit
 ) {
+    val context = LocalContext.current
     var title       by remember { mutableStateOf(reminder?.title ?: "") }
     var description by remember { mutableStateOf(reminder?.description ?: "") }
 
@@ -58,6 +67,7 @@ fun AddReminderBottomSheet(
 
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
+    var showExactAlarmDisclosure by remember { mutableStateOf(false) }
 
     val formattedDate = selectedDateMillis?.let {
         SimpleDateFormat("EEE, dd MMM yyyy", Locale.getDefault()).format(Date(it))
@@ -69,6 +79,15 @@ fun AddReminderBottomSheet(
             if (pickedHour < 12) "AM" else "PM"
         )
     } else null
+
+    fun checkExactAlarmPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            alarmManager.canScheduleExactAlarms()
+        } else {
+            true
+        }
+    }
 
     fun buildDueTime(): Long? {
         if (!timeChosen) return null
@@ -98,6 +117,50 @@ fun AddReminderBottomSheet(
     val onBg           = MaterialTheme.colorScheme.onBackground
     val secondaryText  = MaterialTheme.colorScheme.onSurfaceVariant
     val accentColor    = PastelBlue
+
+    if (showExactAlarmDisclosure) {
+        AlertDialog(
+            onDismissRequest = { showExactAlarmDisclosure = false },
+            icon = { Icon(Icons.Rounded.Alarm, contentDescription = null, tint = accentColor, modifier = Modifier.size(32.dp)) },
+            title = { 
+                Text(
+                    "Timely Alerts", 
+                    style = MaterialTheme.typography.titleLarge, 
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                ) 
+            },
+            text = { 
+                Text(
+                    "To deliver your reminders exactly on time, ReMind+ needs permission to schedule precise alerts. This is safe and keeps your day on track.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center
+                ) 
+            },
+            confirmButton = {
+                Button(
+                    onClick = { 
+                        showExactAlarmDisclosure = false
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
+                        }
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = accentColor)
+                ) {
+                    Text("Enable Now", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExactAlarmDisclosure = false }) {
+                    Text("Maybe Later", color = secondaryText)
+                }
+            },
+            shape = RoundedCornerShape(28.dp),
+            containerColor = contentBoxColor
+        )
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -129,7 +192,14 @@ fun AddReminderBottomSheet(
                     color = onBg
                 )
                 TextButton(
-                    onClick  = { onSave(title.trim(), description.trim(), buildDueTime()) },
+                    onClick  = { 
+                        val dueTime = buildDueTime()
+                        if (dueTime != null && !checkExactAlarmPermission()) {
+                            showExactAlarmDisclosure = true
+                        } else {
+                            onSave(title.trim(), description.trim(), dueTime) 
+                        }
+                    },
                     enabled  = title.isNotBlank()
                 ) {
                     Text(
