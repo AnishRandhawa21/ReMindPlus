@@ -631,7 +631,6 @@ fun NoteEditorScreen(
                 isHighlightMode  = isHighlightActive,
                 strokeColor      = drawState.strokeColor,
                 strokeWidth      = drawState.strokeWidth,
-                backgroundColor  = bgColor,
                 scrollOffsetPx   = scrollOffsetPx,
                 drawingEnabled   = isDrawingActive
             )
