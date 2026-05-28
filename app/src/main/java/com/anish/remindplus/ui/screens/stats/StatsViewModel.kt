@@ -19,7 +19,7 @@ import java.util.Calendar
 class StatsViewModel : ViewModel() {
 
     val hasPermission = mutableStateOf(false)
-    val isLoading = mutableStateOf(false)
+    val isLoading = mutableStateOf(true) // Start in loading state to prevent UI flash
     val isReady = mutableStateOf(false)
 
     val todayScreenTime = mutableStateOf("")
@@ -40,16 +40,13 @@ class StatsViewModel : ViewModel() {
         val shouldFullReload = isFirstLoad || lastLoadDay != currentDay
 
         viewModelScope.launch {
+            if (!isReady.value) isLoading.value = true
+            
             val permissionGranted = withContext(Dispatchers.IO) {
                 UsagePermissionHelper.hasUsageStatsPermission(context)
             }
-            hasPermission.value = permissionGranted
 
             if (permissionGranted) {
-                if (shouldFullReload) {
-                    isLoading.value = true
-                }
-                
                 withContext(Dispatchers.IO) {
                     val todayUsage = UsageStatsHelper.getTodayScreenTime(context)
                     val yesterdayUsage = UsageStatsHelper.getYesterdayScreenTime(context)
@@ -84,11 +81,20 @@ class StatsViewModel : ViewModel() {
                             totalMonthHours.intValue = monthHours
                         }
                         
+                        // Critical: Update permission status AT THE SAME TIME as data
+                        hasPermission.value = true
                         isLoading.value = false
                         isReady.value = true
                         isFirstLoad = false
                         lastLoadDay = currentDay
                     }
+                }
+            } else {
+                withContext(Dispatchers.Main) {
+                    hasPermission.value = false
+                    isLoading.value = false
+                    isReady.value = true
+                    isFirstLoad = false
                 }
             }
         }

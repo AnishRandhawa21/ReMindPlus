@@ -3,11 +3,11 @@ package com.anish.remindplus.ui.navigation
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Note
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.CheckCircleOutline
-import androidx.compose.material.icons.outlined.Note
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -27,8 +27,8 @@ sealed class BottomNavItem(
     object Notes : BottomNavItem(
         route          = Routes.NOTES,
         title          = "Notes",
-        icon           = Icons.Filled.Note,
-        unselectedIcon = Icons.Outlined.Note
+        icon           = Icons.Filled.Description,
+        unselectedIcon = Icons.Outlined.Description
     )
 
     object Stats : BottomNavItem(

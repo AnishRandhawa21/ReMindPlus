@@ -1,13 +1,18 @@
 package com.anish.remindplus.ui.screens.stats
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Insights
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,16 +26,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anish.remindplus.utils.AppUsageInfo
 import com.anish.remindplus.utils.DailyUsageInfo
 import com.anish.remindplus.utils.UsagePermissionHelper
 import com.anish.remindplus.utils.UsageStatsHelper
 import java.util.concurrent.TimeUnit
-import androidx.compose.ui.res.painterResource
 import com.anish.remindplus.ui.animation.*
 import com.anish.remindplus.ui.theme.*
-import com.anish.remindplus.R
+import kotlinx.coroutines.delay
+
 @Composable
 fun StatsScreen(viewModel: StatsViewModel = viewModel()) {
     val context = LocalContext.current
@@ -46,8 +54,43 @@ fun StatsScreen(viewModel: StatsViewModel = viewModel()) {
     val topApps = viewModel.topApps
     val weeklyUsage = viewModel.weeklyUsage
 
-    LaunchedEffect(Unit) {
-        viewModel.loadStats(context)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.loadStats(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    // ── Seamless Growth Drift Logic ──────────────────────────────────────────
+    
+    // 1. Today's Drift
+    val displayTodayMillis by produceState(initialValue = 0L, key1 = isReady, key2 = todayUsageMillis) {
+        if (!isReady) {
+            var current = 0L
+            while (!isReady) {
+                delay(16)
+                current += TimeUnit.SECONDS.toMillis(12) 
+                value = current
+            }
+        } else value = todayUsageMillis
+    }
+
+    // 2. Monthly Drift
+    val displayMonthlyMillis by produceState(initialValue = 0L, key1 = isReady, key2 = monthlyUsageMillis) {
+        if (!isReady) {
+            var current = 0L
+            while (!isReady) {
+                delay(16)
+                current += TimeUnit.MINUTES.toMillis(180)
+                value = current
+            }
+        } else value = monthlyUsageMillis
     }
 
     Column(
@@ -71,7 +114,9 @@ fun StatsScreen(viewModel: StatsViewModel = viewModel()) {
             modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
         )
 
-        if (hasPermission) {
+        if (isReady && !hasPermission) {
+            PermissionRequestView(context)
+        } else {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -81,19 +126,23 @@ fun StatsScreen(viewModel: StatsViewModel = viewModel()) {
             ) {
                 StatsEntranceTransition(0) {
                     UsageOverviewCard(
-                        todayUsageMillis = todayUsageMillis,
+                        todayUsageMillis = displayTodayMillis,
                         yesterdayUsageMillis = yesterdayUsageMillis
                     )
                 }
 
                 StatsEntranceTransition(1) {
-                    WeeklyUsageChart(weeklyUsage = weeklyUsage)
+                    val displayWeekly = if (isReady) weeklyUsage else {
+                        val labels = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+                        labels.map { DailyUsageInfo(it, displayTodayMillis / 2) }
+                    }
+                    WeeklyUsageChart(weeklyUsage = displayWeekly)
                 }
 
                 StatsEntranceTransition(2) {
                     MonthlySummaryCard(
-                        monthlyUsageMillis = monthlyUsageMillis,
-                        totalMonthHours = totalMonthHours
+                        monthlyUsageMillis = displayMonthlyMillis,
+                        totalMonthHours = if (isReady) totalMonthHours else 720
                     )
                 }
 
@@ -104,7 +153,7 @@ fun StatsScreen(viewModel: StatsViewModel = viewModel()) {
                     modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
                 )
 
-                if (topApps.isEmpty() && isReady && !isLoading) {
+                if (isReady && topApps.isEmpty()) {
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
@@ -117,14 +166,16 @@ fun StatsScreen(viewModel: StatsViewModel = viewModel()) {
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                }
-
-                topApps.forEach { app ->
-                    AppUsageItem(app = app)
+                } else if (!isReady) {
+                    repeat(3) {
+                        AppUsageItem(AppUsageInfo("", "...", displayTodayMillis / (it + 2), null))
+                    }
+                } else {
+                    topApps.forEach { app ->
+                        AppUsageItem(app = app)
+                    }
                 }
             }
-        } else {
-            PermissionRequestView(context)
         }
     }
 }
@@ -185,7 +236,7 @@ fun UsageOverviewCard(todayUsageMillis: Long, yesterdayUsageMillis: Long) {
 
             val animatedTime by animateScreenTimeAsState(
                 targetMillis = todayUsageMillis,
-                delayMillis = 300
+                delayMillis = 50
             )
 
             Text(
@@ -214,14 +265,13 @@ fun UsageOverviewCard(todayUsageMillis: Long, yesterdayUsageMillis: Long) {
             
             val animatedProgress by animateFloatAsStateWithDelay(
                 targetValue = targetProgress,
-                delayMillis = 600
+                delayMillis = 300
             )
 
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Gradient Progress Bar that mimics the standard LinearProgressIndicator
                 androidx.compose.foundation.Canvas(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -229,8 +279,6 @@ fun UsageOverviewCard(todayUsageMillis: Long, yesterdayUsageMillis: Long) {
                 ) {
                     val trackColor = onPrimaryContainer.copy(alpha = 0.1f)
                     val strokeWidth = size.height
-                    
-                    // Draw Track
                     drawLine(
                         color = trackColor,
                         start = androidx.compose.ui.geometry.Offset(strokeWidth / 2, size.height / 2),
@@ -238,8 +286,6 @@ fun UsageOverviewCard(todayUsageMillis: Long, yesterdayUsageMillis: Long) {
                         strokeWidth = strokeWidth,
                         cap = androidx.compose.ui.graphics.StrokeCap.Round
                     )
-                    
-                    // Draw Progress
                     if (animatedProgress > 0f) {
                         val progressWidth = (size.width - strokeWidth) * animatedProgress
                         drawLine(
@@ -251,7 +297,6 @@ fun UsageOverviewCard(todayUsageMillis: Long, yesterdayUsageMillis: Long) {
                         )
                     }
                 }
-
                 Text(
                     text = meterLabel,
                     style = MaterialTheme.typography.labelMedium,
@@ -305,7 +350,7 @@ fun WeeklyUsageChart(weeklyUsage: List<DailyUsageInfo>) {
             ),
             border = CardDefaults.outlinedCardBorder()
         ) {
-            val maxUsage = weeklyUsage.maxOfOrNull { it.usageMillis } ?: 1L
+            val maxUsage = if (weeklyUsage.isEmpty()) 1L else weeklyUsage.maxOf { it.usageMillis }.coerceAtLeast(1L)
 
             Row(
                 modifier = Modifier
@@ -321,10 +366,11 @@ fun WeeklyUsageChart(weeklyUsage: List<DailyUsageInfo>) {
                     
                     val animatedPercentage by animateFloatAsStateWithDelay(
                         targetValue = percentage,
-                        delayMillis = 400 + (index * 40)
+                        delayMillis = 200 + (index * 20)
                     )
                     
                     val barHeight = (animatedPercentage * 100).dp
+                    val dayHours = TimeUnit.MILLISECONDS.toHours(day.usageMillis)
 
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -351,8 +397,8 @@ fun WeeklyUsageChart(weeklyUsage: List<DailyUsageInfo>) {
                                         isSelected -> Brush.verticalGradient(
                                             listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary.copy(alpha = 0.7f))
                                         )
-                                        percentage < 0.3f -> Brush.verticalGradient(listOf(StatMintStart, StatMintEnd))
-                                        percentage < 0.7f -> Brush.verticalGradient(listOf(StatBlueStart, StatBlueEnd))
+                                        dayHours < 3 -> Brush.verticalGradient(listOf(StatMintStart, StatMintEnd))
+                                        dayHours < 6 -> Brush.verticalGradient(listOf(StatBlueStart, StatBlueEnd))
                                         else -> Brush.verticalGradient(listOf(StatRoseStart, StatRoseEnd))
                                     },
                                     shape = RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp, bottomStart = 2.dp, bottomEnd = 2.dp)
@@ -378,7 +424,7 @@ fun MonthlySummaryCard(monthlyUsageMillis: Long, totalMonthHours: Int) {
     
     val animatedHours by animateIntAsStateWithDelay(
         targetValue = spendHours,
-        delayMillis = 1000
+        delayMillis = 400
     )
     
     Card(
@@ -414,7 +460,7 @@ fun MonthlySummaryCard(monthlyUsageMillis: Long, totalMonthHours: Int) {
 @Composable
 fun AppUsageItem(app: AppUsageInfo) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -454,7 +500,7 @@ fun AppUsageItem(app: AppUsageInfo) {
                     .weight(1f)
             ) {
                 Text(
-                    text = app.appName,
+                    text = if (app.appName.isBlank()) "..." else app.appName,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
@@ -480,47 +526,83 @@ fun AppUsageItem(app: AppUsageInfo) {
 @Composable
 fun PermissionRequestView(context: android.content.Context) {
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().padding(bottom = 64.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Surface(
-            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-            shape = RoundedCornerShape(24.dp)
+        Box(
+            contentAlignment = Alignment.Center
         ) {
-            Icon(
-                painter = painterResource(id = R.drawable.insight),
-                contentDescription = null,
+            Surface(
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
+                shape = CircleShape,
+                modifier = Modifier.size(180.dp)
+            ) {}
+            Surface(
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                shape = CircleShape,
+                modifier = Modifier.size(140.dp)
+            ) {}
+            Surface(
+                color = MaterialTheme.colorScheme.primaryContainer,
+                shape = RoundedCornerShape(32.dp),
+                modifier = Modifier.size(100.dp),
+                shadowElevation = 4.dp
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Outlined.Insights,
+                        contentDescription = null,
+                        modifier = Modifier.size(54.dp),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+            Surface(
+                color = MaterialTheme.colorScheme.error,
+                shape = CircleShape,
                 modifier = Modifier
-                    .padding(18.dp)
-                    .size(108.dp),
-                tint = Color.Unspecified
-            )
+                    .size(32.dp)
+                    .align(Alignment.BottomEnd)
+                    .offset(x = (-45).dp, y = (-45).dp),
+                border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.surface)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Outlined.Lock,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onError
+                    )
+                }
+            }
         }
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
+        Spacer(modifier = Modifier.height(32.dp))
         Text(
-            text = "Usage Access Required",
+            text = "Unlock Insights",
             style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.ExtraBold,
+            color = MaterialTheme.colorScheme.onBackground
         )
-        
         Text(
-            text = "Enable usage access to view your screen time statistics.",
+            text = "Visualize your digital habits. We need usage access to analyze which apps are taking up your time.",
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 32.dp, vertical = 12.dp),
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            modifier = Modifier.padding(horizontal = 40.dp, vertical = 12.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium
         )
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
+        Spacer(modifier = Modifier.height(32.dp))
         Button(
             onClick = { UsagePermissionHelper.openUsageAccessSettings(context) },
-            modifier = Modifier.height(56.dp).fillMaxWidth(0.7f),
-            shape = RoundedCornerShape(16.dp)
+            modifier = Modifier
+                .height(56.dp)
+                .fillMaxWidth(0.75f),
+            shape = RoundedCornerShape(18.dp),
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
         ) {
-            Text("Enable Insights", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Icon(Icons.Outlined.Insights, contentDescription = null, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(12.dp))
+            Text("Grant Access", fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
