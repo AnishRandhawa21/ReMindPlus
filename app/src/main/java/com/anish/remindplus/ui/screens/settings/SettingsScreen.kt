@@ -5,6 +5,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -853,7 +855,14 @@ fun AccentColorSelectorItem(
     onColorSelected: (Int) -> Unit
 ) {
     val colors = listOf(
-        AestheticBlue, AestheticGreen, AestheticPink, AestheticYellow, AestheticLavender, AestheticPeach, AestheticTeal, AestheticRose
+        AestheticBlue,
+        AestheticGreen,
+        AestheticPink,
+        AestheticYellow,
+        AestheticLavender,
+        AestheticPeach,
+        AestheticTeal,
+        AestheticRose
     )
 
     Column(modifier = Modifier.padding(16.dp)) {
@@ -872,8 +881,12 @@ fun AccentColorSelectorItem(
         }
         Spacer(modifier = Modifier.height(16.dp))
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             colors.forEachIndexed { index, color ->
                 val isSelected = selectedColorIndex == index
