@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -133,11 +134,14 @@ fun NotesScreen(
                     items(notes.size, key = { notes[it].id }) { index ->
                         val note = notes[index]
                         
-                        // Premium staggered reveal animation
-                        var visible by remember { mutableStateOf(false) }
-                        LaunchedEffect(Unit) {
-                            delay(index * 25L)
-                            visible = true
+                        // Persist visibility state to avoid re-animating on scroll
+                        var visible by rememberSaveable(note.id) { mutableStateOf(false) }
+                        LaunchedEffect(note.id) {
+                            if (!visible) {
+                                // Cap the delay so deep scrolling doesn't feel sluggish
+                                delay((index * 25L).coerceAtMost(200L))
+                                visible = true
+                            }
                         }
 
                         AnimatedVisibility(

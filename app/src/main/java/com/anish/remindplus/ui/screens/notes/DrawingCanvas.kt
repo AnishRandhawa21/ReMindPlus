@@ -100,7 +100,7 @@ fun DrawingCanvas(
                                     val newStroke = StrokeData(
                                         points         = mutableListOf(offset),
                                         color          = if (isHighlightMode) strokeColor.copy(alpha = 0.38f) else strokeColor,
-                                        strokeWidth    = if (isHighlightMode) (strokeWidth * 2.2f).coerceAtLeast(18f) else strokeWidth,
+                                        strokeWidth    = if (isHighlightMode) (strokeWidth * 3.5f).coerceAtLeast(40f) else strokeWidth,
                                         isEraser       = false,
                                         isHighlight    = isHighlightMode,
                                         scrollOffsetPx = scrollOffsetPx
@@ -174,7 +174,7 @@ fun DrawingCanvas(
                 color     = stroke.color,
                 style     = Stroke(
                     width = stroke.strokeWidth,
-                    cap   = StrokeCap.Round,
+                    cap   = if (stroke.isHighlight) StrokeCap.Square else StrokeCap.Round,
                     join  = StrokeJoin.Round
                 ),
                 blendMode = if (stroke.isHighlight) BlendMode.Multiply else BlendMode.SrcOver

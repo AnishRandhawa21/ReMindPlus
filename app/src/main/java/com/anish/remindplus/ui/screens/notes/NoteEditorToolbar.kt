@@ -13,7 +13,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.RadioButtonChecked
 import androidx.compose.material.icons.outlined.AutoFixNormal
-import androidx.compose.material.icons.outlined.Brush         // highlighter icon
 import androidx.compose.material.icons.outlined.Create
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.FormatListBulleted
@@ -74,6 +73,7 @@ fun NoteEditorToolbar(
                     surfaceVar        = surfaceVar,
                     outline           = outline,
                     isHighlightActive = false,
+                    onUndo            = onUndo,
                     onInsert          = onInsert,
                     onToggleChecklist = onToggleChecklist,
                     onEnterHighlight  = onEnterHighlight,
@@ -89,6 +89,7 @@ fun NoteEditorToolbar(
                     surfaceVar        = surfaceVar,
                     outline           = outline,
                     isHighlightActive = true,
+                    onUndo            = onUndo,
                     onInsert          = onInsert,
                     onToggleChecklist = onToggleChecklist,
                     onEnterHighlight  = onEnterHighlight,
@@ -128,6 +129,7 @@ private fun TextModeToolbar(
     surfaceVar        : Color,
     outline           : Color,
     isHighlightActive : Boolean,
+    onUndo            : () -> Unit,
     onInsert          : (String) -> Unit,
     onToggleChecklist : () -> Unit,
     onEnterHighlight  : () -> Unit,
@@ -145,64 +147,85 @@ private fun TextModeToolbar(
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment     = Alignment.CenterVertically
     ) {
-        // ── Text Styles ──────────────────────────────────────────────────────
-        IconToolButton(
-            icon               = Icons.Outlined.FormatSize,
-            contentDescription = "Text style",
-            onClick            = onShowStylePicker
-        )
-        ToolbarDivider(outline)
+        if (isHighlightActive) {
+            // Special layout for highlight mode: Undo + Highlighter (active) + Close
+            IconToolButton(
+                icon               = Icons.Outlined.Undo,
+                contentDescription = "Undo highlight",
+                onClick            = onUndo
+            )
+            ToolbarDivider(outline)
+            
+            IconToolButton(
+                icon               = Icons.Outlined.Highlight,
+                contentDescription = "Exit highlight mode",
+                isActive           = true,
+                activeColor        = Color(0xFFFFEB3B),
+                onClick            = onExitHighlight
+            )
+            
+            Spacer(modifier = Modifier.weight(1f))
+            
+            IconToolButton(
+                icon               = Icons.Default.Check,
+                contentDescription = "Done",
+                onClick            = onExitHighlight
+            )
+        } else {
+            // ── Text Styles ──────────────────────────────────────────────────────
+            IconToolButton(
+                icon               = Icons.Outlined.FormatSize,
+                contentDescription = "Text style",
+                onClick            = onShowStylePicker
+            )
+            ToolbarDivider(outline)
 
-        // ── Bullet list ─────────────────────────────────────────────────────
-        IconToolButton(
-            icon               = Icons.Outlined.FormatListBulleted,
-            contentDescription = "Insert bullet",
-            onClick            = { onInsert("• ") }
-        )
-        ToolbarDivider(outline)
+            // ── Bullet list ─────────────────────────────────────────────────────
+            IconToolButton(
+                icon               = Icons.Outlined.FormatListBulleted,
+                contentDescription = "Insert bullet",
+                onClick            = { onInsert("• ") }
+            )
+            ToolbarDivider(outline)
 
-        // ── Numbered list ───────────────────────────────────────────────────
-        IconToolButton(
-            icon               = Icons.Outlined.FormatListNumbered,
-            contentDescription = "Insert numbered list",
-            onClick            = { onInsert("1. ") }
-        )
-        ToolbarDivider(outline)
+            // ── Numbered list ───────────────────────────────────────────────────
+            IconToolButton(
+                icon               = Icons.Outlined.FormatListNumbered,
+                contentDescription = "Insert numbered list",
+                onClick            = { onInsert("1. ") }
+            )
+            ToolbarDivider(outline)
 
-        // ── Checklist ───────────────────────────────────────────────────────
-        IconButton(
-            onClick  = onToggleChecklist,
-            modifier = Modifier.size(48.dp)
-        ) {
-            Icon(
-                imageVector        = Icons.Default.RadioButtonChecked,
-                contentDescription = "Checklist",
-                tint               = MaterialTheme.colorScheme.onSurface,
-                modifier           = Modifier.size(20.dp)
+            // ── Checklist ───────────────────────────────────────────────────────
+            IconButton(
+                onClick  = onToggleChecklist,
+                modifier = Modifier.size(48.dp)
+            ) {
+                Icon(
+                    imageVector        = Icons.Default.RadioButtonChecked,
+                    contentDescription = "Checklist",
+                    tint               = MaterialTheme.colorScheme.onSurface,
+                    modifier           = Modifier.size(20.dp)
+                )
+            }
+            ToolbarDivider(outline)
+
+            // ── Quick Highlighter 🖍️ ─────────────────────────────────────────────
+            IconToolButton(
+                icon               = Icons.Outlined.Highlight,
+                contentDescription = "Highlight mode",
+                isActive           = false,
+                onClick            = onEnterHighlight
+            )
+            ToolbarDivider(outline)
+
+            // ── Full draw mode ✏️ ────────────────────────────────────────────────
+            IconToolButton(
+                icon               = Icons.Outlined.Create,
+                contentDescription = "Enter draw mode",
+                onClick            = onEnterDraw
             )
         }
-        ToolbarDivider(outline)
-
-        // ── Quick Highlighter 🖍️ ─────────────────────────────────────────────
-        // Uses Icons.Outlined.Brush as the closest built-in highlighter icon.
-        // When active the button glows amber to signal highlight mode.
-        IconToolButton(
-            icon               = Icons.Outlined.Brush,
-            contentDescription = if (isHighlightActive) "Exit highlight mode" else "Highlight mode",
-            isActive           = isHighlightActive,
-            activeColor        = Color(0xFFFFC107),   // amber — distinct from primary
-            onClick            = {
-                if (isHighlightActive) onExitHighlight() else onEnterHighlight()
-            }
-        )
-        ToolbarDivider(outline)
-
-        // ── Full draw mode ✏️ ────────────────────────────────────────────────
-        IconToolButton(
-            icon               = Icons.Outlined.Create,
-            contentDescription = "Enter draw mode",
-            onClick            = onEnterDraw
-        )
     }
 }
 

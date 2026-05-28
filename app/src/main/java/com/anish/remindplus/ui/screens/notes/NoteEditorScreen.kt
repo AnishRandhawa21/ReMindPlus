@@ -396,7 +396,12 @@ fun NoteEditorScreen(
             onEnterDraw = {
                 editorMode = EditorMode.DRAW
                 keyboardController?.hide()
-                drawState = drawState.copy(activeTool = DrawTool.Pen)
+                // Reset to default pen color if we were highlighting
+                val targetColor = if (drawState.activeTool == DrawTool.Highlighter) defaultStrokeColor else drawState.strokeColor
+                drawState = drawState.copy(
+                    activeTool  = DrawTool.Pen,
+                    strokeColor = targetColor
+                )
             },
             onExitDraw = {
                 editorMode = EditorMode.TEXT
