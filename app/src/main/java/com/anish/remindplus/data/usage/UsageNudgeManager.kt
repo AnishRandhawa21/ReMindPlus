@@ -11,38 +11,38 @@ object UsageNudgeManager {
     private const val PREF_LAST_NUDGE_PKG = "last_nudge_pkg"
 
     private val chillNudges = listOf(
-        "Still scrolling? Embarrassing.",
+        "Still here? Embarrassing.",
         "Bro… touch grass already.",
-        "Your thumb deserves overtime pay.",
+        "Your eyes deserve a break.",
         "This app ain’t paying you. Stop.",
-        "The scroll never ends. You should.",
-        "You’re doomscrolling professionally now.",
+        "The cycle never ends. You should.",
+        "You’re procrastinating professionally now.",
         "Close the app. The world still exists.",
         "Even the algorithm wants you gone.",
         "Nothing new here. Leave with dignity.",
         "Go hydrate, you digital raisin.",
         "Your battery and brain are both dying.",
         "Still here? That’s kinda wild.",
-        "You’ve entered the boring part of scrolling.",
-        "One more reel won’t fix your life.",
+        "You’ve entered the boring part of the app.",
+        "One more minute won’t fix your life.",
         "Reality called. You ignored it again.",
         "This app has you in a chokehold.",
         "Congrats. You wasted another 20 mins.",
         "Your future self is judging hard.",
         "Put the phone down, legend.",
-        "You’re scrolling like it’s a full-time job.",
+        "You’re using this like it’s a full-time job.",
         "Go outside. The graphics are insane.",
         "Even zombies blink more than you.",
         "The content got bad 15 mins ago.",
         "Take a break before your eyes resign.",
         "Your attention span is crying rn.",
         "Stop feeding the algorithm. Fight back.",
-        "You’re trapped in the infinite scroll dungeon.",
+        "You’re trapped in the infinite loop dungeon.",
         "This app misses you less than real life does.",
-        "Enough scrolling. Start existing again.",
-        "You survived this long without another reel. Leave.",
+        "Enough of this. Start existing again.",
+        "You survived this long without another refresh. Leave.",
         "Phone down. Chin up. Life’s waiting.",
-        "Scrolling won’t unlock a secret ending.",
+        "This won’t unlock a secret ending.",
         "Your screen time report will be horrifying.",
         "Imagine being productive for once. Crazy idea.",
         "You’ve officially lost the plot.",
@@ -53,6 +53,28 @@ object UsageNudgeManager {
         "Alright, enough internet for today."
     )
 
+    private val rudeNudges = listOf(
+        "3 hours? This is genuinely pathetic.",
+        "Your life is literally rotting away right now.",
+        "You’re a professional time-waster at this point.",
+        "Is there anyone even in there? Or just a digital ghost?",
+        "3 hours on this? Your potential is crying.",
+        "You’re addicted. Admit it and log off.",
+        "The algorithm owns you. You’re just a number now.",
+        "Seriously, 3 hours? That’s embarrassing."
+    )
+
+    private val brutalNudges = listOf(
+        "4 HOURS?! You’ve officially lost the plot of your own life.",
+        "Get a job. Get a hobby. Get a life. Just get OFF.",
+        "At this rate, your thumb will outlive your social skills.",
+        "4 hours today. Imagine what you could have actually achieved.",
+        "You’re not even watching anymore, you’re just staring. Wake up.",
+        "This is a digital intervention. You’re failing.",
+        "Your future self is screaming at you to put the phone down.",
+        "Congratulations, you’ve spent 1/6th of your entire day here. Disgraceful."
+    )
+
     fun checkUsageNudges(context: Context) {
         val session = UsageStatsHelper.getCurrentContinuousSession(context) ?: return
         val (packageName, _) = session
@@ -61,8 +83,8 @@ object UsageNudgeManager {
         val totalTimeMillis = UsageStatsHelper.getAppTotalTimeToday(context, packageName)
         val totalMinutes = TimeUnit.MILLISECONDS.toMinutes(totalTimeMillis)
         
-        // thresholds: 45m, 1h, 1.5h
-        val thresholds = listOf(45L, 60L, 90L)
+        // thresholds: 45m, 1h, 1.5h, 2h, 3h, 4h
+        val thresholds = listOf(45L, 60L, 90L, 120L, 180L, 240L)
         val currentThreshold = thresholds.lastOrNull { totalMinutes >= it } ?: 0L
 
         // If we haven't hit the first 45m threshold today, return
@@ -76,23 +98,31 @@ object UsageNudgeManager {
         val currentTime = System.currentTimeMillis()
         val lastNudgeThreshold = prefs.getLong("last_threshold_$packageName", 0L)
         
-        // Trigger if: 
-        // 1. It's a different app than last time
-        // 2. OR we crossed a NEW threshold (e.g. went from 45m total to 60m total)
-        // 3. OR it's been more than 30 mins since the last nudge for this same app/threshold
         if (lastNudgePkg != packageName || currentThreshold > lastNudgeThreshold || (currentTime - lastNudgeTime) > TimeUnit.MINUTES.toMillis(30)) {
             val appName = UsageStatsHelper.getAppName(context, packageName)
-            
-            var randomIndex = (0 until chillNudges.size).random()
-            if (randomIndex == lastNudgeIndex) {
-                randomIndex = (randomIndex + 1) % chillNudges.size
+            val formattedTime = UsageStatsHelper.formatScreenTime(totalTimeMillis)
+
+            var selectedIndex = -1
+            val (title, randomMessage) = when {
+                totalMinutes >= 240 -> {
+                    "DIGITAL INTERVENTION 💀" to brutalNudges.random()
+                }
+                totalMinutes >= 180 -> {
+                    "This is getting sad... 😬" to rudeNudges.random()
+                }
+                else -> {
+                    selectedIndex = (0 until chillNudges.size).random()
+                    if (selectedIndex == lastNudgeIndex) {
+                        selectedIndex = (selectedIndex + 1) % chillNudges.size
+                    }
+                    "Quick reality check... 🤨" to chillNudges[selectedIndex]
+                }
             }
-            val randomMessage = chillNudges[randomIndex]
             
             NotificationHelper.showNotification(
                 context,
-                title = "Hey, quick reality check... 🤨",
-                message = "$randomMessage (Total today: ${totalMinutes}m on $appName)",
+                title = title,
+                message = "$randomMessage -- $appName: $formattedTime",
                 notificationId = 999 
             )
 
@@ -100,7 +130,7 @@ object UsageNudgeManager {
                 .putLong(PREF_LAST_NUDGE_TIME, currentTime)
                 .putString(PREF_LAST_NUDGE_PKG, packageName)
                 .putLong("last_threshold_$packageName", currentThreshold)
-                .putInt("last_nudge_index", randomIndex)
+                .putInt("last_nudge_index", selectedIndex)
                 .apply()
         }
     }
