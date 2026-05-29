@@ -91,14 +91,12 @@ object UsageNudgeManager {
         if (currentThreshold == 0L) return
 
         val prefs = context.getSharedPreferences("usage_nudges", Context.MODE_PRIVATE)
-        val lastNudgeTime = prefs.getLong(PREF_LAST_NUDGE_TIME, 0L)
         val lastNudgePkg = prefs.getString(PREF_LAST_NUDGE_PKG, "")
         val lastNudgeIndex = prefs.getInt("last_nudge_index", -1)
 
-        val currentTime = System.currentTimeMillis()
         val lastNudgeThreshold = prefs.getLong("last_threshold_$packageName", 0L)
         
-        if (lastNudgePkg != packageName || currentThreshold > lastNudgeThreshold || (currentTime - lastNudgeTime) > TimeUnit.MINUTES.toMillis(30)) {
+        if (lastNudgePkg != packageName || currentThreshold > lastNudgeThreshold) {
             val appName = UsageStatsHelper.getAppName(context, packageName)
             val formattedTime = UsageStatsHelper.formatScreenTime(totalTimeMillis)
 
@@ -127,7 +125,7 @@ object UsageNudgeManager {
             )
 
             prefs.edit()
-                .putLong(PREF_LAST_NUDGE_TIME, currentTime)
+                .putLong(PREF_LAST_NUDGE_TIME, System.currentTimeMillis())
                 .putString(PREF_LAST_NUDGE_PKG, packageName)
                 .putLong("last_threshold_$packageName", currentThreshold)
                 .putInt("last_nudge_index", selectedIndex)
