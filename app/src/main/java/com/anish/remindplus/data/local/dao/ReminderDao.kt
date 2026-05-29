@@ -123,6 +123,21 @@ interface ReminderDao {
 """)
     suspend fun getAllScheduledRemindersSync(): List<ReminderEntity>
 
+    @Query("""
+    UPDATE reminders
+    SET 
+        isDeleted = 1,
+        isSynced = 0,
+        updatedAt = :updatedAt
+    WHERE dueTime IS NOT NULL 
+    AND dueTime < :threshold 
+    AND isDeleted = 0
+""")
+    suspend fun softDeleteOldReminders(
+        threshold: Long,
+        updatedAt: Long
+    )
+
     @Query("DELETE FROM reminders")
     suspend fun deleteAllReminders()
 

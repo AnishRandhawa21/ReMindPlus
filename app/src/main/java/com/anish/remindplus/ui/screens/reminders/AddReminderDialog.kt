@@ -54,15 +54,19 @@ fun AddReminderBottomSheet(
 
     var selectedDateMillis by remember { mutableStateOf<Long?>(initialDueTime) }
     var timeChosen  by remember { mutableStateOf(reminder?.dueTime != null) }
+    
+    val now = Calendar.getInstance().apply {
+        add(Calendar.MINUTE, 1)
+    }
     var pickedHour  by remember { mutableIntStateOf(
         if (reminder?.dueTime != null) {
             Calendar.getInstance().apply { timeInMillis = reminder.dueTime }.get(Calendar.HOUR_OF_DAY)
-        } else 9
+        } else now.get(Calendar.HOUR_OF_DAY)
     )}
     var pickedMinute by remember { mutableIntStateOf(
         if (reminder?.dueTime != null) {
             Calendar.getInstance().apply { timeInMillis = reminder.dueTime }.get(Calendar.MINUTE)
-        } else 0
+        } else now.get(Calendar.MINUTE)
     )}
 
     var showDatePicker by remember { mutableStateOf(false) }
@@ -104,6 +108,12 @@ fun AddReminderBottomSheet(
         }
         return finalCal.timeInMillis
     }
+
+    val calculatedDueTime by remember(timeChosen, selectedDateMillis, pickedHour, pickedMinute) {
+        derivedStateOf { buildDueTime() }
+    }
+    
+    val isTimeValid = calculatedDueTime == null || calculatedDueTime!! > System.currentTimeMillis()
 
     val isEditing = reminder != null
 
@@ -193,18 +203,18 @@ fun AddReminderBottomSheet(
                 )
                 TextButton(
                     onClick  = { 
-                        val dueTime = buildDueTime()
+                        val dueTime = calculatedDueTime
                         if (dueTime != null && !checkExactAlarmPermission()) {
                             showExactAlarmDisclosure = true
                         } else {
                             onSave(title.trim(), description.trim(), dueTime) 
                         }
                     },
-                    enabled  = title.isNotBlank()
+                    enabled  = title.isNotBlank() && isTimeValid
                 ) {
                     Text(
                         text       = "Save",
-                        color      = if (title.isNotBlank()) accentColor else secondaryText.copy(alpha = 0.5f),
+                        color      = if (title.isNotBlank() && isTimeValid) accentColor else secondaryText.copy(alpha = 0.5f),
                         fontWeight = FontWeight.Bold,
                         fontSize   = 17.sp
                     )

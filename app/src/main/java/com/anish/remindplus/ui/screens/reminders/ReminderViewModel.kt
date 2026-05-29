@@ -24,6 +24,13 @@ class ReminderViewModel(
     private val preferenceManager: PreferenceManager
 ) : ViewModel() {
 
+    init {
+        viewModelScope.launch {
+            repository.cleanupOldReminders()
+            triggerAutoSync()
+        }
+    }
+
     private val _isReady = MutableStateFlow(false)
     val isReady = _isReady.asStateFlow()
 
@@ -109,6 +116,12 @@ class ReminderViewModel(
         dueTime: Long?
     ){
         if (title.isBlank()) return
+        
+        // Prevent reminders in the past
+        if (dueTime != null && dueTime < System.currentTimeMillis()) {
+            // Optional: You could trigger a Toast or error state here
+            return
+        }
 
         viewModelScope.launch {
             val userId = authManager.getCurrentUserId()
@@ -156,6 +169,11 @@ class ReminderViewModel(
         description: String,
         dueTime: Long?
     ) {
+        // Prevent updates to a past time
+        if (dueTime != null && dueTime < System.currentTimeMillis()) {
+            return
+        }
+
         viewModelScope.launch {
             AlarmScheduler.cancelReminder(
                 context = context,

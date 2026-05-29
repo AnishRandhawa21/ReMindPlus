@@ -289,15 +289,18 @@ fun NoteEditorScreen(
                 )
             }
 
+            val isNoteValid = title.isNotBlank()
             val interactionSource = remember { MutableInteractionSource() }
+            
             Box(
                 modifier = Modifier
                     .padding(end = 16.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(onBg)
+                    .background(if (isNoteValid) onBg else onBg.copy(alpha = 0.12f))
                     .clickable(
                         interactionSource = interactionSource,
                         indication        = null,
+                        enabled           = isNoteValid,
                         onClick           = {
                             val serializedDrawing = DrawingMapper.serializeList(drawingStrokes)
                             onSave(title.trim(), content.text.trim(), serializedDrawing)
@@ -313,13 +316,13 @@ fun NoteEditorScreen(
                     Icon(
                         Icons.Default.Check,
                         contentDescription = "Save",
-                        tint               = bgColor,
+                        tint               = if (isNoteValid) bgColor else onBg.copy(alpha = 0.38f),
                         modifier           = Modifier.size(14.dp)
                     )
                     Text(
                         text  = "Save",
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                        color = bgColor
+                        color = if (isNoteValid) bgColor else onBg.copy(alpha = 0.38f)
                     )
                 }
             }

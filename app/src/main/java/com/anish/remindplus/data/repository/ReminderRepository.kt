@@ -102,4 +102,23 @@ class ReminderRepository(
             updatedAt = System.currentTimeMillis()
         )
     }
+
+    suspend fun cleanupOldReminders() {
+        val calendar = java.util.Calendar.getInstance()
+        // Set to start of today
+        calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        calendar.set(java.util.Calendar.MINUTE, 0)
+        calendar.set(java.util.Calendar.SECOND, 0)
+        calendar.set(java.util.Calendar.MILLISECOND, 0)
+        
+        // Go back to start of yesterday. 
+        // Anything before this is "Day before yesterday" or older.
+        calendar.add(java.util.Calendar.DAY_OF_YEAR, -1)
+        
+        val threshold = calendar.timeInMillis
+        dao.softDeleteOldReminders(
+            threshold = threshold,
+            updatedAt = System.currentTimeMillis()
+        )
+    }
 }

@@ -59,11 +59,11 @@ object UsageSummaryManager {
         val (title, message) = when (type) {
 
             SummaryType.AFTERNOON -> {
-                "Reality Check" to afternoonMessages.random()
+                "2 PM Insight" to afternoonMessages.random()
             }
 
             SummaryType.EVENING -> {
-                "Evening Check" to eveningMessages.random()
+                "6 PM Insight" to eveningMessages.random()
             }
 
             SummaryType.NIGHT -> {
