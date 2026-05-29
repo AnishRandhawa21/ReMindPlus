@@ -83,11 +83,17 @@ fun DrawingCanvas(
         if (changed) redrawTrigger++
     }
 
+    // Use a ref to track the last processed undo trigger to avoid firing on initial composition
+    var lastUndoTrigger by remember { mutableIntStateOf(undoTrigger) }
+
     LaunchedEffect(undoTrigger) {
-        if (strokes.isNotEmpty()) {
-            strokes.removeAt(strokes.size - 1)
-            redrawTrigger++
+        if (undoTrigger > lastUndoTrigger) {
+            if (strokes.isNotEmpty()) {
+                strokes.removeAt(strokes.size - 1)
+                redrawTrigger++
+            }
         }
+        lastUndoTrigger = undoTrigger
     }
 
     Canvas(

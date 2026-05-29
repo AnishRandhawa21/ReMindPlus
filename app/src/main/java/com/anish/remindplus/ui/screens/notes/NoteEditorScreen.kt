@@ -115,7 +115,8 @@ fun NoteEditorScreen(
     }
 
     // Single stroke list shared across all modes
-    val drawingStrokes = remember {
+    // Keyed by initialDrawingData length/hash to allow re-initialization if the underlying note changes
+    val drawingStrokes = remember(initialDrawingData) {
         val initialStrokes = DrawingMapper.deserializeList(initialDrawingData)
         mutableStateListOf<StrokeData>().apply { addAll(initialStrokes) }
     }
