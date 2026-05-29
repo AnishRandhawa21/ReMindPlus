@@ -77,6 +77,16 @@ class ReminderViewModel(
                     context = context,
                     reminderId = reminder.id.hashCode()
                 )
+            } else {
+                reminder.dueTime?.let { dueTime ->
+                    AlarmScheduler.scheduleReminder(
+                        context = context,
+                        reminderId = reminder.id.hashCode(),
+                        title = reminder.title,
+                        message = if (reminder.description.isBlank()) "You have a reminder" else reminder.description,
+                        triggerTime = dueTime
+                    )
+                }
             }
 
             repository.updateCompletionStatus(

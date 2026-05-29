@@ -306,6 +306,20 @@ object UsageStatsHelper {
         return bitmap
     }
 
+    fun getAppTotalTimeToday(context: Context, packageName: String): Long {
+        val usm = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        val calendar = Calendar.getInstance()
+        val endTime = System.currentTimeMillis()
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        val startTime = calendar.timeInMillis
+
+        val appIntervals = getAppIntervals(usm, startTime, endTime, context)
+        return appIntervals[packageName]?.sumOf { it.end - it.start } ?: 0L
+    }
+
     fun formatScreenTime(timeInMillis: Long): String {
         val hours = TimeUnit.MILLISECONDS.toHours(timeInMillis)
         val minutes = TimeUnit.MILLISECONDS.toMinutes(timeInMillis) % 60

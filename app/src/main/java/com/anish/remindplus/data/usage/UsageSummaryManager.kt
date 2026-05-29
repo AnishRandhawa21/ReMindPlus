@@ -23,35 +23,37 @@ object UsageSummaryManager {
         val timeText = UsageStatsHelper.formatScreenTime(totalUsage)
 
         val afternoonMessages = listOf(
-            "Half the day gone. $timeText on your screen already.",
-            "$timeText today. Productivity left the chat.",
-            "Lunch break or scroll session? $timeText says scroll.",
-            "$timeText wasted on glowing pixels today.",
-            "Afternoon update: still trapped in the scroll loop.",
-            "$timeText today. Your apps are thriving.",
-            "You’ve spent $timeText here already. Be serious.",
-            "Midday check: $timeText gone forever."
+            "$timeText on your phone so far.",
+            "Afternoon check: $timeText today.",
+            "You've logged $timeText today.",
+            "$timeText of screen time already.",
+            "Today's usage: $timeText.",
+            "$timeText spent on your device.",
+            "Screen time today: $timeText.",
+            "Quick update: $timeText today."
         )
 
         val eveningMessages = listOf(
-            "Sunset outside. $timeText inside your phone.",
-            "$timeText today. Maybe go outside now.",
-            "Evening report: $timeText way too much scrolling today.",
-            "$timeText logged. Your brain needs fresh air.",
-            "Your screen time hit $timeText. Impressive. Sadly.",
-            "$timeText today. The algorithm loves you.",
-            "Night’s coming. You can still save the day."
+            "Evening update: $timeText today.",
+            "$timeText on your phone today.",
+            "Today's usage stands at $timeText.",
+            "Screen time so far: $timeText.",
+            "$timeText logged today.",
+            "Usage check: $timeText today.",
+            "$timeText recorded today.",
+            "Evening reflection: $timeText."
         )
 
+
         val nightMessages = listOf(
-            "Final damage today: $timeText.",
-            "$timeText today. Your sleep schedule is nervous.",
-            "Phone won today. $timeText worth.",
-            "Midnight check: still scrolling after $timeText.",
-            "$timeText today. Go unconscious already.",
-            "That’s $timeText you’ll never get back.",
-            "Enough scrolling. Your bed misses you.",
-            "$timeText today. Recharge yourself too."
+            "Day wrapped at $timeText",
+            "Final tally: $timeText",
+            "Today's total: $timeText",
+            "Usage report: $timeText",
+            "Day closed: $timeText",
+            "Final count: $timeText",
+            "Daily recap: $timeText",
+            "Logged: $timeText"
         )
 
         val (title, message) = when (type) {
@@ -68,16 +70,17 @@ object UsageSummaryManager {
                 val yesterdayUsage = UsageStatsHelper.getYesterdayScreenTime(context)
 
                 val diffText = if (yesterdayUsage > 0) {
-                    val percent = (((totalUsage - yesterdayUsage).toDouble() / yesterdayUsage) * 100).toInt()
+                    val diff = totalUsage - yesterdayUsage
+                    val percent = ((kotlin.math.abs(diff).toDouble() / yesterdayUsage) * 100).toInt()
 
                     when {
-                        percent > 10 -> " Up $percent% from yesterday."
-                        percent < -10 -> " Down ${kotlin.math.abs(percent)}%. Nice."
-                        else -> " Same as yesterday."
+                        diff > 0 -> " -- $percent% more than yesterday"
+                        diff < 0 -> " -- $percent% less than yesterday"
+                        else -> " -- same as yesterday"
                     }
                 } else ""
 
-                "Daily Damage" to (nightMessages.random() + diffText)
+                "The Final Count" to (nightMessages.random() + diffText)
             }
         }
 

@@ -53,17 +53,19 @@ object UsageNudgeManager {
         "Alright, enough internet for today."
     )
 
-    fun checkContinuousUsage(context: Context) {
+    fun checkUsageNudges(context: Context) {
         val session = UsageStatsHelper.getCurrentContinuousSession(context) ?: return
-        val (packageName, durationMillis) = session
+        val (packageName, _) = session
         
-        val durationMinutes = TimeUnit.MILLISECONDS.toMinutes(durationMillis)
+        // Get total time spent on this app TODAY
+        val totalTimeMillis = UsageStatsHelper.getAppTotalTimeToday(context, packageName)
+        val totalMinutes = TimeUnit.MILLISECONDS.toMinutes(totalTimeMillis)
         
-        // thresholds: 45m, 1h, 1.5h, 2h
-        val thresholds = listOf(45L, 60L, 90L, 120L)
-        val currentThreshold = thresholds.lastOrNull { durationMinutes >= it } ?: 0L
+        // thresholds: 45m, 1h, 1.5h
+        val thresholds = listOf(45L, 60L, 90L)
+        val currentThreshold = thresholds.lastOrNull { totalMinutes >= it } ?: 0L
 
-        // If we haven't hit 45m, return
+        // If we haven't hit the first 45m threshold today, return
         if (currentThreshold == 0L) return
 
         val prefs = context.getSharedPreferences("usage_nudges", Context.MODE_PRIVATE)
@@ -72,12 +74,15 @@ object UsageNudgeManager {
         val lastNudgeIndex = prefs.getInt("last_nudge_index", -1)
 
         val currentTime = System.currentTimeMillis()
-        val lastNudgeDuration = prefs.getLong("last_threshold_$packageName", 0L)
+        val lastNudgeThreshold = prefs.getLong("last_threshold_$packageName", 0L)
         
-        if (lastNudgePkg != packageName || currentThreshold > lastNudgeDuration || (currentTime - lastNudgeTime) > TimeUnit.MINUTES.toMillis(30)) {
+        // Trigger if: 
+        // 1. It's a different app than last time
+        // 2. OR we crossed a NEW threshold (e.g. went from 45m total to 60m total)
+        // 3. OR it's been more than 30 mins since the last nudge for this same app/threshold
+        if (lastNudgePkg != packageName || currentThreshold > lastNudgeThreshold || (currentTime - lastNudgeTime) > TimeUnit.MINUTES.toMillis(30)) {
             val appName = UsageStatsHelper.getAppName(context, packageName)
             
-            // Smarter randomization: Avoid the very last message shown
             var randomIndex = (0 until chillNudges.size).random()
             if (randomIndex == lastNudgeIndex) {
                 randomIndex = (randomIndex + 1) % chillNudges.size
@@ -87,7 +92,7 @@ object UsageNudgeManager {
             NotificationHelper.showNotification(
                 context,
                 title = "Hey, quick reality check... 🤨",
-                message = "$randomMessage (You've been on $appName for ${durationMinutes}m)",
+                message = "$randomMessage (Total today: ${totalMinutes}m on $appName)",
                 notificationId = 999 
             )
 

@@ -33,7 +33,7 @@ object UsageNudgeScheduler {
         alarmManager.setInexactRepeating(
             AlarmManager.RTC_WAKEUP,
             firstTrigger,
-            TimeUnit.MINUTES.toMillis(12), // Slightly more frequent (12 mins)
+            TimeUnit.MINUTES.toMillis(5), // Check every 5 minutes for accuracy
             periodicPendingIntent
         )
 

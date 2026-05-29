@@ -19,7 +19,7 @@ class UsageReminderReceiver : BroadcastReceiver() {
             try {
                 when (action) {
                     ACTION_PERIODIC_CHECK -> {
-                        UsageNudgeManager.checkContinuousUsage(context)
+                        UsageNudgeManager.checkUsageNudges(context)
                     }
                     ACTION_SUMMARY_AFTERNOON -> {
                         UsageSummaryManager.sendDailySummary(context, UsageSummaryManager.SummaryType.AFTERNOON)
