@@ -289,7 +289,7 @@ fun NoteEditorScreen(
                 )
             }
 
-            val isNoteValid = title.isNotBlank()
+            val isNoteValid = title.isNotBlank() || content.text.isNotBlank() || drawingStrokes.isNotEmpty()
             val interactionSource = remember { MutableInteractionSource() }
             
             Box(

@@ -1,9 +1,7 @@
 package com.anish.remindplus.ui.screens.notes
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -134,39 +132,39 @@ fun NotesScreen(
                     items(notes.size, key = { notes[it].id }) { index ->
                         val note = notes[index]
                         
-                        // Persist visibility state to avoid re-animating on scroll
+                        // Handles the subtle entrance only once per note
                         var visible by rememberSaveable(note.id) { mutableStateOf(false) }
                         LaunchedEffect(note.id) {
                             if (!visible) {
-                                // Cap the delay so deep scrolling doesn't feel sluggish
-                                delay((index * 25L).coerceAtMost(200L))
+                                delay((index * 12L).coerceAtMost(120L))
                                 visible = true
                             }
                         }
 
-                        AnimatedVisibility(
-                            visible = visible,
-                            enter = fadeIn(tween(350)) + 
-                                    scaleIn(
-                                        animationSpec = spring(
-                                            dampingRatio = Spring.DampingRatioLowBouncy,
-                                            stiffness = Spring.StiffnessLow
-                                        ),
-                                        initialScale = 0.92f
-                                    ) +
-                                    slideInVertically(tween(450)) { it / 12 },
-                            exit = fadeOut(tween(200))
-                        ) {
-                            NoteCard(
-                                note        = note,
-                                cardBrush   = getNoteGradient(note.id),
-                                onClick     = {
-                                    navController.navigate("note_editor/${note.id}")
+                        val alpha by animateFloatAsState(
+                            targetValue = if (visible) 1f else 0f,
+                            animationSpec = tween(500, easing = FastOutSlowInEasing)
+                        )
+                        val slideY by animateFloatAsState(
+                            targetValue = if (visible) 0f else 12f,
+                            animationSpec = tween(600, easing = FastOutSlowInEasing)
+                        )
+
+                        NoteCard(
+                            note        = note,
+                            cardBrush   = getNoteGradient(note.id),
+                            modifier    = Modifier
+                                .animateItem() // Handles Add/Delete/Move smoothly
+                                .graphicsLayer {
+                                    this.alpha = alpha
+                                    this.translationY = slideY
                                 },
-                                onPinClick  = { viewModel.togglePinnedNote(note) },
-                                onDeleteClick = { viewModel.deleteNote(note) }
-                            )
-                        }
+                            onClick     = {
+                                navController.navigate("note_editor/${note.id}")
+                            },
+                            onPinClick  = { viewModel.togglePinnedNote(note) },
+                            onDeleteClick = { viewModel.deleteNote(note) }
+                        )
                     }
                 }
             }
@@ -195,6 +193,7 @@ fun NotesScreen(
 fun NoteCard(
     note: NoteEntity,
     cardBrush: Brush,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
     onPinClick: () -> Unit,
     onDeleteClick: () -> Unit
@@ -202,7 +201,7 @@ fun NoteCard(
     var showMenu by remember { mutableStateOf(false) }
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .background(cardBrush)

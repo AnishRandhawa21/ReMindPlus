@@ -66,6 +66,39 @@ object UsageNudgeManager {
         "Congratulations, you’ve spent 1/6th of your entire day here. Disgraceful."
     )
 
+    private val chillTitles = listOf(
+        "Quick reality check 🤨",
+        "Tiny interruption 👀",
+        "Just checking in",
+        "A gentle reminder",
+        "Pause for a second",
+        "Friendly nudge",
+        "Still with us?",
+        "Small reality check"
+    )
+
+    private val rudeTitles = listOf(
+        "This is getting sad 😬",
+        "Bro...",
+        "Time to leave",
+        "What are we doing?",
+        "Phone addiction alert",
+        "Still here?",
+        "Enough already",
+        "Be honest"
+    )
+
+    private val brutalTitles = listOf(
+        "DIGITAL INTERVENTION 💀",
+        "Emergency meeting 🚨",
+        "This is not good",
+        "We need to talk",
+        "Critical screen time",
+        "Touch grass immediately 🌱",
+        "Reality is calling",
+        "This went too far"
+    )
+
     suspend fun checkUsageNudges(context: Context) {
         val session = UsageStatsHelper.getCurrentContinuousSession(context) ?: return
         val (packageName, _) = session
@@ -91,26 +124,42 @@ object UsageNudgeManager {
             val nudgeDao = db.nudgeMessageDao()
 
             var selectedIndex = -1
+
+
             val (title, randomMessage) = when {
                 totalMinutes >= 240 -> {
                     val cloudMessages = nudgeDao.getMessagesByType("brutal")
-                    val message = if (cloudMessages.isNotEmpty()) cloudMessages.random().content else localBrutalNudges.random()
-                    "DIGITAL INTERVENTION 💀" to message
+                    val message = if (cloudMessages.isNotEmpty())
+                        cloudMessages.random().content
+                    else
+                        localBrutalNudges.random()
+
+                    brutalTitles.random() to message
                 }
+
                 totalMinutes >= 180 -> {
                     val cloudMessages = nudgeDao.getMessagesByType("rude")
-                    val message = if (cloudMessages.isNotEmpty()) cloudMessages.random().content else localRudeNudges.random()
-                    "This is getting sad... 😬" to message
+                    val message = if (cloudMessages.isNotEmpty())
+                        cloudMessages.random().content
+                    else
+                        localRudeNudges.random()
+
+                    rudeTitles.random() to message
                 }
+
                 else -> {
                     val cloudMessages = nudgeDao.getMessagesByType("chill")
-                    val messages = if (cloudMessages.isNotEmpty()) cloudMessages.map { it.content } else localChillNudges
-                    
+                    val messages = if (cloudMessages.isNotEmpty())
+                        cloudMessages.map { it.content }
+                    else
+                        localChillNudges
+
                     selectedIndex = (0 until messages.size).random()
                     if (selectedIndex == lastNudgeIndex && messages.size > 1) {
                         selectedIndex = (selectedIndex + 1) % messages.size
                     }
-                    "Quick reality check... 🤨" to messages[selectedIndex]
+
+                    chillTitles.random() to messages[selectedIndex]
                 }
             }
             
