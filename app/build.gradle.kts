@@ -24,8 +24,8 @@ android {
         applicationId = "com.anish.remindplus"
         minSdk = 24
         targetSdk = 36
-        versionCode = 7
-        versionName = "1.0.7"
+        versionCode = 8
+        versionName = "1.0.8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -118,4 +118,7 @@ dependencies {
 
     // Serialization
     implementation(libs.kotlinx.serialization.json)
+
+    // In-App Updates
+    implementation(libs.play.app.update.ktx)
 }
