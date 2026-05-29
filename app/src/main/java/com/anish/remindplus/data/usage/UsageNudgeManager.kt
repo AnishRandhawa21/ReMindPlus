@@ -1,6 +1,7 @@
 package com.anish.remindplus.data.usage
 
 import android.content.Context
+import com.anish.remindplus.data.local.DatabaseProvider
 import com.anish.remindplus.utils.NotificationHelper
 import com.anish.remindplus.utils.UsageStatsHelper
 import java.util.concurrent.TimeUnit
@@ -10,50 +11,40 @@ object UsageNudgeManager {
     private const val PREF_LAST_NUDGE_TIME = "last_nudge_timestamp"
     private const val PREF_LAST_NUDGE_PKG = "last_nudge_pkg"
 
-    private val chillNudges = listOf(
-        "Still here? Embarrassing.",
-        "Bro… touch grass already.",
-        "Your eyes deserve a break.",
-        "This app ain’t paying you. Stop.",
-        "The cycle never ends. You should.",
-        "You’re procrastinating professionally now.",
-        "Close the app. The world still exists.",
-        "Even the algorithm wants you gone.",
-        "Nothing new here. Leave with dignity.",
-        "Go hydrate, you digital raisin.",
-        "Your battery and brain are both dying.",
-        "Still here? That’s kinda wild.",
-        "You’ve entered the boring part of the app.",
-        "One more minute won’t fix your life.",
-        "Reality called. You ignored it again.",
-        "This app has you in a chokehold.",
-        "Congrats. You wasted another 20 mins.",
-        "Your future self is judging hard.",
-        "Put the phone down, legend.",
-        "You’re using this like it’s a full-time job.",
-        "Go outside. The graphics are insane.",
-        "Even zombies blink more than you.",
-        "The content got bad 15 mins ago.",
-        "Take a break before your eyes resign.",
-        "Your attention span is crying rn.",
-        "Stop feeding the algorithm. Fight back.",
-        "You’re trapped in the infinite loop dungeon.",
-        "This app misses you less than real life does.",
-        "Enough of this. Start existing again.",
-        "You survived this long without another refresh. Leave.",
-        "Phone down. Chin up. Life’s waiting.",
-        "This won’t unlock a secret ending.",
-        "Your screen time report will be horrifying.",
-        "Imagine being productive for once. Crazy idea.",
-        "You’ve officially lost the plot.",
-        "This is your sign to log off.",
-        "Go stare at the ceiling instead. Better content.",
-        "Your brain needs airplane mode.",
-        "The app won. Don’t let it.",
-        "Alright, enough internet for today."
+    private val localChillNudges = listOf(
+        "Still on your phone? Interesting.",
+        "Your screen time is evolving.",
+        "A break wouldn't hurt, you know.",
+        "The phone can survive without you.",
+        "You've been here a while.",
+        "Just checking... still worth it?",
+        "Your future self has questions.",
+        "The screen isn't going anywhere.",
+        "Maybe give your eyes a day off.",
+        "Phone down. Tiny challenge.",
+        "You've earned a short break.",
+        "The outside world still exists.",
+        "This app isn't paying rent.",
+        "Your battery is concerned.",
+        "You've spent enough quality time together.",
+        "A quick break sounds reasonable.",
+        "The phone is winning currently.",
+        "Still here? That's dedication.",
+        "Reality sent a follow request.",
+        "Time flies when you're not noticing.",
+        "Your attention deserves better.",
+        "The screen will miss you.",
+        "This could've been a water break.",
+        "Take five. The phone will wait.",
+        "Your eyes are requesting backup.",
+        "Small reminder: blink.",
+        "You've unlocked extended screen mode.",
+        "The algorithm appreciates your service.",
+        "Maybe check in with real life.",
+        "The app can manage without you."
     )
 
-    private val rudeNudges = listOf(
+    private val localRudeNudges = listOf(
         "3 hours? This is genuinely pathetic.",
         "Your life is literally rotting away right now.",
         "You’re a professional time-waster at this point.",
@@ -64,7 +55,7 @@ object UsageNudgeManager {
         "Seriously, 3 hours? That’s embarrassing."
     )
 
-    private val brutalNudges = listOf(
+    private val localBrutalNudges = listOf(
         "4 HOURS?! You’ve officially lost the plot of your own life.",
         "Get a job. Get a hobby. Get a life. Just get OFF.",
         "At this rate, your thumb will outlive your social skills.",
@@ -75,45 +66,51 @@ object UsageNudgeManager {
         "Congratulations, you’ve spent 1/6th of your entire day here. Disgraceful."
     )
 
-    fun checkUsageNudges(context: Context) {
+    suspend fun checkUsageNudges(context: Context) {
         val session = UsageStatsHelper.getCurrentContinuousSession(context) ?: return
         val (packageName, _) = session
         
-        // Get total time spent on this app TODAY
         val totalTimeMillis = UsageStatsHelper.getAppTotalTimeToday(context, packageName)
         val totalMinutes = TimeUnit.MILLISECONDS.toMinutes(totalTimeMillis)
         
-        // thresholds: 45m, 1h, 1.5h, 2h, 3h, 4h
         val thresholds = listOf(45L, 60L, 90L, 120L, 180L, 240L)
         val currentThreshold = thresholds.lastOrNull { totalMinutes >= it } ?: 0L
 
-        // If we haven't hit the first 45m threshold today, return
         if (currentThreshold == 0L) return
 
         val prefs = context.getSharedPreferences("usage_nudges", Context.MODE_PRIVATE)
         val lastNudgePkg = prefs.getString(PREF_LAST_NUDGE_PKG, "")
         val lastNudgeIndex = prefs.getInt("last_nudge_index", -1)
-
         val lastNudgeThreshold = prefs.getLong("last_threshold_$packageName", 0L)
         
         if (lastNudgePkg != packageName || currentThreshold > lastNudgeThreshold) {
             val appName = UsageStatsHelper.getAppName(context, packageName)
             val formattedTime = UsageStatsHelper.formatScreenTime(totalTimeMillis)
 
+            val db = DatabaseProvider.getDatabase(context)
+            val nudgeDao = db.nudgeMessageDao()
+
             var selectedIndex = -1
             val (title, randomMessage) = when {
                 totalMinutes >= 240 -> {
-                    "DIGITAL INTERVENTION 💀" to brutalNudges.random()
+                    val cloudMessages = nudgeDao.getMessagesByType("brutal")
+                    val message = if (cloudMessages.isNotEmpty()) cloudMessages.random().content else localBrutalNudges.random()
+                    "DIGITAL INTERVENTION 💀" to message
                 }
                 totalMinutes >= 180 -> {
-                    "This is getting sad... 😬" to rudeNudges.random()
+                    val cloudMessages = nudgeDao.getMessagesByType("rude")
+                    val message = if (cloudMessages.isNotEmpty()) cloudMessages.random().content else localRudeNudges.random()
+                    "This is getting sad... 😬" to message
                 }
                 else -> {
-                    selectedIndex = (0 until chillNudges.size).random()
-                    if (selectedIndex == lastNudgeIndex) {
-                        selectedIndex = (selectedIndex + 1) % chillNudges.size
+                    val cloudMessages = nudgeDao.getMessagesByType("chill")
+                    val messages = if (cloudMessages.isNotEmpty()) cloudMessages.map { it.content } else localChillNudges
+                    
+                    selectedIndex = (0 until messages.size).random()
+                    if (selectedIndex == lastNudgeIndex && messages.size > 1) {
+                        selectedIndex = (selectedIndex + 1) % messages.size
                     }
-                    "Quick reality check... 🤨" to chillNudges[selectedIndex]
+                    "Quick reality check... 🤨" to messages[selectedIndex]
                 }
             }
             

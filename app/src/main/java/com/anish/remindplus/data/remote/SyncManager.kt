@@ -8,11 +8,15 @@ import com.anish.remindplus.data.remote.model.toEntity
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
 import com.anish.remindplus.data.remote.model.RemoteNote
+import com.anish.remindplus.data.remote.model.RemoteNudgeMessage
 import com.anish.remindplus.data.repository.NoteRepository
+import com.anish.remindplus.data.repository.NudgeMessageRepository
+import com.anish.remindplus.data.local.entity.NudgeMessageEntity
 
 class SyncManager(
     private val reminderRepository: ReminderRepository,
-    private val noteRepository: NoteRepository
+    private val noteRepository: NoteRepository,
+    private val nudgeMessageRepository: NudgeMessageRepository
 ) {
 
     suspend fun pushReminders() {
@@ -97,9 +101,29 @@ class SyncManager(
         pullReminders()
         pushNotes()
         pullNotes()
+        pullNudgeMessages()
         
         // Restore all alarms after pulling fresh data
         val activeReminders = reminderRepository.getScheduledRemindersSync()
         com.anish.remindplus.utils.AlarmScheduler.rescheduleAllReminders(context, activeReminders)
+    }
+
+    suspend fun pullNudgeMessages() {
+        try {
+            val remoteMessages = SupabaseClient.client
+                .from("nudge_messages")
+                .select()
+                .decodeList<RemoteNudgeMessage>()
+
+            if (remoteMessages.isNotEmpty()) {
+                val entities = remoteMessages.map {
+                    NudgeMessageEntity(it.id, it.type, it.content)
+                }
+                nudgeMessageRepository.deleteAllMessages()
+                nudgeMessageRepository.insertMessages(entities)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 }

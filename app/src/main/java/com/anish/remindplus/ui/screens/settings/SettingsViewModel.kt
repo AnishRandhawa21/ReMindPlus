@@ -296,15 +296,7 @@ class SettingsViewModel(
             try {
                 isLoading = true
                 syncMessage = "Syncing..."
-                syncManager.pushReminders()
-                syncManager.pullReminders()
-                syncManager.pushNotes()
-                syncManager.pullNotes()
-                
-                // Reschedule all active reminders after sync completes
-                val activeReminders = reminderRepository.getScheduledRemindersSync()
-                AlarmScheduler.rescheduleAllReminders(getApplication(), activeReminders)
-
+                syncManager.syncAll(getApplication())
                 syncMessage = ""
             } catch (e: Exception) {
                 Log.e("SYNC_ERROR", "Sync failed", e)

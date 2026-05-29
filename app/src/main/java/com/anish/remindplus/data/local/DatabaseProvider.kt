@@ -17,7 +17,10 @@ object DatabaseProvider {
                 AppDatabase::class.java,
                 "remindplus_db"
             )
-                .addMigrations(AppDatabase.MIGRATION_3_4)
+                .addMigrations(
+                    AppDatabase.MIGRATION_3_4,
+                    AppDatabase.MIGRATION_4_5
+                )
                 .fallbackToDestructiveMigration()
                 .build()
 

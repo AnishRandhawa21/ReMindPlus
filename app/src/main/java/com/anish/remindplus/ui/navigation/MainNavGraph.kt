@@ -21,6 +21,7 @@ import com.anish.remindplus.data.remote.AuthManager
 import com.anish.remindplus.data.remote.SyncManager
 import com.anish.remindplus.data.repository.NoteRepository
 import com.anish.remindplus.data.repository.ReminderRepository
+import com.anish.remindplus.data.repository.NudgeMessageRepository
 import com.anish.remindplus.ui.animation.defaultEnterTransition
 import com.anish.remindplus.ui.animation.defaultExitTransition
 import com.anish.remindplus.ui.animation.tabEnterTransition
@@ -55,7 +56,8 @@ fun MainNavGraph(
 
     val reminderRepo = ReminderRepository(database.reminderDao(), authManager)
     val noteRepo     = NoteRepository(database.noteDao(), authManager)
-    val syncManager  = remember { SyncManager(reminderRepo, noteRepo) }
+    val nudgeRepo    = NudgeMessageRepository(database.nudgeMessageDao())
+    val syncManager  = remember { SyncManager(reminderRepo, noteRepo, nudgeRepo) }
 
     val viewModel: ReminderViewModel = viewModel(
         factory = ReminderViewModelFactory(reminderRepo, authManager, syncManager, preferenceManager)
