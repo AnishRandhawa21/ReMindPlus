@@ -80,15 +80,15 @@ object UsageNudgeScheduler {
 
     fun cancelAll(context: Context) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val actions = listOf(
-            UsageReminderReceiver.ACTION_PERIODIC_CHECK,
-            UsageReminderReceiver.ACTION_SUMMARY_AFTERNOON,
-            UsageReminderReceiver.ACTION_SUMMARY_EVENING,
-            UsageReminderReceiver.ACTION_SUMMARY_NIGHT
+        val actions = mapOf(
+            REQ_CODE_PERIODIC to UsageReminderReceiver.ACTION_PERIODIC_CHECK,
+            REQ_CODE_AFTERNOON to UsageReminderReceiver.ACTION_SUMMARY_AFTERNOON,
+            REQ_CODE_EVENING to UsageReminderReceiver.ACTION_SUMMARY_EVENING,
+            REQ_CODE_NIGHT to UsageReminderReceiver.ACTION_SUMMARY_NIGHT
         )
-        actions.forEachIndexed { index, actionStr ->
+        actions.forEach { (reqCode, actionStr) ->
             val intent = Intent(context, UsageReminderReceiver::class.java).apply { action = actionStr }
-            val pi = PendingIntent.getBroadcast(context, 2001 + index, intent, PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE)
+            val pi = PendingIntent.getBroadcast(context, reqCode, intent, PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE)
             if (pi != null) alarmManager.cancel(pi)
         }
     }

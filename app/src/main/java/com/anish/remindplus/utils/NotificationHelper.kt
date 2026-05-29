@@ -16,13 +16,13 @@ import com.anish.remindplus.R
 object NotificationHelper {
 
     private fun getChannelId(context: Context): String {
-        val preferenceManager = PreferenceManager(context)
+        val preferenceManager = PreferenceManager.getInstance(context)
         return "remind_plus_channel_${preferenceManager.notificationSound}"
     }
 
     fun createNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val preferenceManager = PreferenceManager(context)
+            val preferenceManager = PreferenceManager.getInstance(context)
             val soundName = preferenceManager.notificationSound
             val channelId = getChannelId(context)
             
@@ -59,7 +59,7 @@ object NotificationHelper {
         message: String,
         notificationId: Int = System.currentTimeMillis().toInt()
     ) {
-        val preferenceManager = PreferenceManager(context)
+        val preferenceManager = PreferenceManager.getInstance(context)
         
         // Check if user has disabled notifications in settings
         if (!preferenceManager.notificationsEnabled) {

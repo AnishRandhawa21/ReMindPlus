@@ -35,7 +35,7 @@ class SettingsViewModel(
 ) : AndroidViewModel(application) {
 
     private val authManager = AuthManager(application)
-    private val preferenceManager = PreferenceManager(application)
+    private val preferenceManager = PreferenceManager.getInstance(application)
     private var mediaPlayer: MediaPlayer? = null
 
     var isLoading by mutableStateOf(false)

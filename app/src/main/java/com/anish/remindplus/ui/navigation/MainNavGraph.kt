@@ -51,7 +51,7 @@ fun MainNavGraph(
     val context           = LocalContext.current
     val database          = DatabaseProvider.getDatabase(context)
     val authManager       = AuthManager(context)
-    val preferenceManager = remember { PreferenceManager(context) }
+    val preferenceManager = remember { PreferenceManager.getInstance(context) }
 
     val reminderRepo = ReminderRepository(database.reminderDao(), authManager)
     val noteRepo     = NoteRepository(database.noteDao(), authManager)

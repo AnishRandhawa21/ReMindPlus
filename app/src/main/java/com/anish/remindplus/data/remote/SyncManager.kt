@@ -11,153 +11,82 @@ import com.anish.remindplus.data.remote.model.RemoteNote
 import com.anish.remindplus.data.repository.NoteRepository
 
 class SyncManager(
-
     private val reminderRepository: ReminderRepository,
     private val noteRepository: NoteRepository
 ) {
 
     suspend fun pushReminders() {
-
-
-        val unsyncedReminders =
-            reminderRepository.getUnsyncedReminders()
-
+        val unsyncedReminders = reminderRepository.getUnsyncedReminders()
         unsyncedReminders.forEach { reminder ->
-
             SupabaseClient.client
                 .from("reminders")
-                .upsert(
-                    reminder.toRemote()
-                )
+                .upsert(reminder.toRemote())
 
-            reminderRepository
-                .markReminderSynced(reminder.id)
+            reminderRepository.markReminderSynced(reminder.id)
         }
     }
-    suspend fun pullReminders() {
 
+    suspend fun pullReminders() {
         val remoteReminders = SupabaseClient.client
             .from("reminders")
             .select(
                 columns = Columns.list(
-                    "id",
-                    "user_id",
-                    "title",
-                    "description",
-                    "created_at",
-                    "updated_at",
-                    "due_time",
-                    "is_completed",
-                    "completed_at",
-                    "is_pinned",
-                    "is_deleted"
+                    "id", "user_id", "title", "description", "created_at",
+                    "updated_at", "due_time", "is_completed", "completed_at",
+                    "is_pinned", "is_deleted"
                 )
             ) {
-                order(
-                    column = "created_at",
-                    order = Order.DESCENDING
-                )
+                order(column = "created_at", order = Order.DESCENDING)
             }
             .decodeList<RemoteReminder>()
 
         remoteReminders.forEach { remoteReminder ->
-
-            val localReminder =
-                reminderRepository.getReminderById(
-                    remoteReminder.id
-                )
-
+            val localReminder = reminderRepository.getReminderById(remoteReminder.id)
             val remoteEntity = remoteReminder.toEntity()
 
             if (localReminder == null) {
-
-                reminderRepository.insertReminder(
-                    remoteEntity
-                )
-
+                reminderRepository.insertReminder(remoteEntity)
             } else {
-
-                if (
-                    remoteEntity.updatedAt >
-                    localReminder.updatedAt
-                ) {
-
-                    reminderRepository.updateReminder(
-                        remoteEntity
-                    )
+                if (remoteEntity.updatedAt > localReminder.updatedAt) {
+                    reminderRepository.updateReminder(remoteEntity)
                 }
             }
         }
     }
 
     suspend fun pushNotes() {
-
-        val unsyncedNotes =
-            noteRepository.getUnsyncedNotes()
-
+        val unsyncedNotes = noteRepository.getUnsyncedNotes()
         unsyncedNotes.forEach { note ->
-
             SupabaseClient.client
                 .from("notes")
-                .upsert(
-                    note.toRemote()
-                )
+                .upsert(note.toRemote())
 
-            noteRepository
-                .markNoteSynced(note.id)
+            noteRepository.markNoteSynced(note.id)
         }
     }
 
     suspend fun pullNotes() {
-
         val remoteNotes = SupabaseClient.client
             .from("notes")
             .select(
                 columns = Columns.list(
-                    "id",
-                    "user_id",
-                    "title",
-                    "content",
-                    "is_pinned",
-                    "created_at",
-                    "updated_at",
-                    "is_deleted",
-                    "drawing_data"
+                    "id", "user_id", "title", "content", "is_pinned",
+                    "created_at", "updated_at", "is_deleted", "drawing_data"
                 )
             ) {
-                order(
-                    column = "created_at",
-                    order = Order.DESCENDING
-                )
+                order(column = "created_at", order = Order.DESCENDING)
             }
             .decodeList<RemoteNote>()
 
         remoteNotes.forEach { remoteNote ->
-
-            val localNote =
-                noteRepository.getNoteByIdSync(
-                    remoteNote.id
-                )
-
-            val remoteEntity =
-                remoteNote.toEntity()
+            val localNote = noteRepository.getNoteByIdSync(remoteNote.id)
+            val remoteEntity = remoteNote.toEntity()
 
             if (localNote == null) {
-
-                noteRepository.insertNote(
-                    remoteEntity
-                )
-
+                noteRepository.insertNote(remoteEntity)
             } else {
-
-                if (
-                    remoteEntity.updatedAt >
-                    localNote.updatedAt
-                ) {
-
-                    noteRepository.updateNote(
-                        remoteEntity
-                    )
+                if (remoteEntity.updatedAt > localNote.updatedAt) {
+                    noteRepository.updateNote(remoteEntity)
                 }
             }
         }

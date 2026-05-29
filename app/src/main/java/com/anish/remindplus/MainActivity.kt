@@ -31,6 +31,7 @@ class MainActivity : ComponentActivity() {
 
     private val loginViewModel: LoginViewModel by viewModels()
     private lateinit var appUpdateManager: AppUpdateManager
+    private val screenStateReceiver = ScreenStateReceiver()
 
     private val updateResultLauncher = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
@@ -58,7 +59,7 @@ class MainActivity : ComponentActivity() {
             addAction(android.content.Intent.ACTION_SCREEN_ON)
             addAction(android.content.Intent.ACTION_SCREEN_OFF)
         }
-        registerReceiver(ScreenStateReceiver(), filter)
+        registerReceiver(screenStateReceiver, filter)
 
         // Handle Deep Link on first launch
         SupabaseClient.client.handleDeeplinks(intent)
@@ -66,7 +67,7 @@ class MainActivity : ComponentActivity() {
         NotificationHelper.createNotificationChannel(this)
         UsageNudgeScheduler.scheduleNudges(this)
 
-        val preferenceManager = PreferenceManager(this)
+        val preferenceManager = PreferenceManager.getInstance(this)
         
         enableEdgeToEdge()
         setContent {
@@ -122,6 +123,15 @@ class MainActivity : ComponentActivity() {
                     AppUpdateOptions.newBuilder(AppUpdateType.IMMEDIATE).build()
                 )
             }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        try {
+            unregisterReceiver(screenStateReceiver)
+        } catch (e: Exception) {
+            // Already unregistered or not registered
         }
     }
 }

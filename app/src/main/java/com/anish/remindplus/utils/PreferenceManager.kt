@@ -5,9 +5,9 @@ import android.content.SharedPreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-class PreferenceManager(context: Context) {
+class PreferenceManager private constructor(context: Context) {
     private val sharedPreferences: SharedPreferences =
-        context.getSharedPreferences("remind_plus_prefs", Context.MODE_PRIVATE)
+        context.applicationContext.getSharedPreferences("remind_plus_prefs", Context.MODE_PRIVATE)
 
     companion object {
         private const val KEY_THEME = "key_theme"
@@ -17,6 +17,15 @@ class PreferenceManager(context: Context) {
         private const val KEY_NOTIFICATION_SOUND = "key_notification_sound"
         private const val KEY_MONITORING_PRESET = "key_monitoring_preset"
         private const val KEY_HAS_ASKED_NOTIFICATION = "key_has_asked_notification"
+
+        @Volatile
+        private var INSTANCE: PreferenceManager? = null
+
+        fun getInstance(context: Context): PreferenceManager {
+            return INSTANCE ?: synchronized(this) {
+                INSTANCE ?: PreferenceManager(context).also { INSTANCE = it }
+            }
+        }
     }
 
     private val _themeFlow = MutableStateFlow(sharedPreferences.getString(KEY_THEME, "System") ?: "System")

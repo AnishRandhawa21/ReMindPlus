@@ -13,6 +13,7 @@ import android.os.Build
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import java.util.Calendar
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import kotlin.math.max
 import kotlin.math.min
@@ -33,8 +34,8 @@ data class UsageInterval(val start: Long, val end: Long)
 
 object UsageStatsHelper {
 
-    private val permissionCache = mutableMapOf<String, Boolean>()
-    private var defaultLauncher: String? = null
+    private val permissionCache = ConcurrentHashMap<String, Boolean>()
+    @Volatile private var defaultLauncher: String? = null
 
     fun getTodayScreenTime(context: Context): Long {
         val usm = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
@@ -76,22 +77,20 @@ object UsageStatsHelper {
 
         // Merge overlapping intervals to get true "Screen On with App" time
         var total = 0L
-        if (allIntervals.isNotEmpty()) {
-            var currentStart = allIntervals[0].start
-            var currentEnd = allIntervals[0].end
+        var currentStart = allIntervals[0].start
+        var currentEnd = allIntervals[0].end
 
-            for (i in 1 until allIntervals.size) {
-                val next = allIntervals[i]
-                if (next.start <= currentEnd) {
-                    currentEnd = max(currentEnd, next.end)
-                } else {
-                    total += (currentEnd - currentStart)
-                    currentStart = next.start
-                    currentEnd = next.end
-                }
+        for (i in 1 until allIntervals.size) {
+            val next = allIntervals[i]
+            if (next.start <= currentEnd) {
+                currentEnd = max(currentEnd, next.end)
+            } else {
+                total += (currentEnd - currentStart)
+                currentStart = next.start
+                currentEnd = next.end
             }
-            total += (currentEnd - currentStart)
         }
+        total += (currentEnd - currentStart)
         return total
     }
 
