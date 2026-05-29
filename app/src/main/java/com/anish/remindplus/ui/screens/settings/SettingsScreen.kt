@@ -300,11 +300,11 @@ fun SoundSelectorItem(
     onSoundSelected: (String) -> Unit
 ) {
     val soundOptions = listOf(
-        "notification_1" to "Alert 1",
-        "notification_2" to "Alert 2",
-        "notification_3" to "Alert 3",
-        "notification_4" to "Alert 4",
-        "notification_5" to "Alert 5"
+        "notification_3" to "Alert 1",
+        "notification_1" to "Alert 2",
+        "notification_5" to "Alert 3",
+        "notification_2" to "Alert 4",
+        "notification_4" to "Alert 5"
     )
     var expanded by remember { mutableStateOf(false) }
     val currentLabel = soundOptions.find { it.first == selectedSound }?.second ?: "Default"
