@@ -79,4 +79,20 @@ object AlarmScheduler {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         alarmManager.cancel(pendingIntent)
     }
+
+    fun rescheduleAllReminders(context: Context, reminders: List<com.anish.remindplus.data.local.entity.ReminderEntity>) {
+        reminders.forEach { reminder ->
+            reminder.dueTime?.let { dueTime ->
+                if (dueTime > System.currentTimeMillis() && !reminder.isCompleted && !reminder.isDeleted) {
+                    scheduleReminder(
+                        context = context,
+                        reminderId = reminder.id.hashCode(),
+                        title = reminder.title,
+                        message = if (reminder.description.isBlank()) "You have a reminder" else reminder.description,
+                        triggerTime = dueTime
+                    )
+                }
+            }
+        }
+    }
 }

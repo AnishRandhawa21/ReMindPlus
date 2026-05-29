@@ -18,6 +18,9 @@ import com.anish.remindplus.data.repository.NoteRepository
 import com.anish.remindplus.data.repository.ReminderRepository
 import com.anish.remindplus.utils.NetworkUtils
 import com.anish.remindplus.utils.PreferenceManager
+import com.anish.remindplus.utils.AlarmScheduler
+import com.anish.remindplus.utils.NotificationHelper
+import com.anish.remindplus.data.usage.UsageNudgeScheduler
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -172,7 +175,7 @@ class SettingsViewModel(
         notificationSound = newSound
         preferenceManager.notificationSound = newSound
         // Re-create the channel immediately so the new sound is registered
-        com.anish.remindplus.utils.NotificationHelper.createNotificationChannel(getApplication())
+        NotificationHelper.createNotificationChannel(getApplication())
         playSoundPreview(newSound)
     }
 
@@ -253,8 +256,25 @@ class SettingsViewModel(
         viewModelScope.launch {
             isLoading = true
             try {
+                val context = getApplication<Application>()
+                
+                // 1. Cancel all scheduled reminder alarms
+                val activeReminders = reminderRepository.getScheduledRemindersSync()
+                activeReminders.forEach { reminder ->
+                    AlarmScheduler.cancelReminder(
+                        context = context,
+                        reminderId = reminder.id.hashCode()
+                    )
+                }
+
+                // 2. Cancel usage nudges and summaries
+                UsageNudgeScheduler.cancelAll(context)
+
+                // 3. Clear local database
                 reminderRepository.deleteAllReminders()
                 noteRepository.deleteAllNotes()
+                
+                // 4. Reset preferences and sign out
                 preferenceManager.hasAskedNotificationPermission = false
                 authManager.signOut()
                 showLogoutWarning = false
@@ -280,6 +300,11 @@ class SettingsViewModel(
                 syncManager.pullReminders()
                 syncManager.pushNotes()
                 syncManager.pullNotes()
+                
+                // Reschedule all active reminders after sync completes
+                val activeReminders = reminderRepository.getScheduledRemindersSync()
+                AlarmScheduler.rescheduleAllReminders(getApplication(), activeReminders)
+
                 syncMessage = ""
             } catch (e: Exception) {
                 Log.e("SYNC_ERROR", "Sync failed", e)

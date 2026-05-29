@@ -106,6 +106,23 @@ interface ReminderDao {
 """)
     suspend fun getActiveReminders(currentTime: Long): List<ReminderEntity>
 
+    @Query("""
+    SELECT * FROM reminders
+    WHERE userId = :userId
+    AND isDeleted = 0
+    AND dueTime IS NOT NULL
+""")
+    suspend fun getScheduledRemindersSync(
+        userId: String
+    ): List<ReminderEntity>
+
+    @Query("""
+    SELECT * FROM reminders
+    WHERE isDeleted = 0
+    AND dueTime IS NOT NULL
+""")
+    suspend fun getAllScheduledRemindersSync(): List<ReminderEntity>
+
     @Query("DELETE FROM reminders")
     suspend fun deleteAllReminders()
 

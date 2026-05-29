@@ -162,4 +162,15 @@ class SyncManager(
             }
         }
     }
+
+    suspend fun syncAll(context: android.content.Context) {
+        pushReminders()
+        pullReminders()
+        pushNotes()
+        pullNotes()
+        
+        // Restore all alarms after pulling fresh data
+        val activeReminders = reminderRepository.getScheduledRemindersSync()
+        com.anish.remindplus.utils.AlarmScheduler.rescheduleAllReminders(context, activeReminders)
+    }
 }

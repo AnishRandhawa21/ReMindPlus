@@ -67,10 +67,7 @@ fun MainNavGraph(
     LaunchedEffect(Unit) {
         if (preferenceManager.autoSync) {
             runCatching {
-                syncManager.pushReminders()
-                syncManager.pullReminders()
-                syncManager.pushNotes()
-                syncManager.pullNotes()
+                syncManager.syncAll(context)
             }
         }
     }

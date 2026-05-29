@@ -22,19 +22,8 @@ class BootReceiver : BroadcastReceiver() {
             CoroutineScope(Dispatchers.IO).launch {
                 try {
                     val db = DatabaseProvider.getDatabase(context)
-                    val activeReminders = db.reminderDao().getActiveReminders(System.currentTimeMillis())
-                    
-                    activeReminders.forEach { reminder ->
-                        reminder.dueTime?.let { dueTime ->
-                            AlarmScheduler.scheduleReminder(
-                                context = context,
-                                reminderId = reminder.id.hashCode(),
-                                title = reminder.title,
-                                message = if (reminder.description.isBlank()) "You have a reminder" else reminder.description,
-                                triggerTime = dueTime
-                            )
-                        }
-                    }
+                    val activeReminders = db.reminderDao().getAllScheduledRemindersSync()
+                    AlarmScheduler.rescheduleAllReminders(context, activeReminders)
                 } catch (e: Exception) {
                     e.printStackTrace()
                 } finally {

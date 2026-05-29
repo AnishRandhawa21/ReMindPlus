@@ -21,6 +21,10 @@ class ReminderRepository(
 
     fun getScheduledReminders() =
         dao.getScheduledReminders(getUserId())
+
+    suspend fun getScheduledRemindersSync() =
+        dao.getScheduledRemindersSync(getUserId())
+
     suspend fun insertReminder(
         reminder: ReminderEntity
     ): Long {
