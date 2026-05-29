@@ -53,7 +53,7 @@ class StatsViewModel : ViewModel() {
                     val apps = UsageStatsHelper.getTopUsedApps(context, limit = 5)
                     
                     val weekly = if (shouldFullReload) UsageStatsHelper.getWeeklyUsageStats(context) else null
-                    val monthlyUsage = if (shouldFullReload) UsageStatsHelper.getMonthlyTotalUsage(context, filtered = false) else -1L
+                    val monthlyUsage = if (shouldFullReload) UsageStatsHelper.getMonthlyTotalUsage(context, filtered = true) else -1L
                     val monthHours = if (shouldFullReload) UsageStatsHelper.getTotalHoursInCurrentMonth() else -1
 
                     withContext(Dispatchers.Main) {
