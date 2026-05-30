@@ -4,6 +4,7 @@ import android.content.Context
 import com.anish.remindplus.data.local.DatabaseProvider
 import com.anish.remindplus.utils.NotificationHelper
 import com.anish.remindplus.utils.UsageStatsHelper
+import java.util.Calendar
 import java.util.concurrent.TimeUnit
 
 object UsageNudgeManager {
@@ -101,8 +102,8 @@ object UsageNudgeManager {
 
     suspend fun checkUsageNudges(context: Context) {
         val session = UsageStatsHelper.getCurrentContinuousSession(context) ?: return
-        val (packageName, _) = session
         
+        val (packageName, _) = session
         val totalTimeMillis = UsageStatsHelper.getAppTotalTimeToday(context, packageName)
         val totalMinutes = TimeUnit.MILLISECONDS.toMinutes(totalTimeMillis)
         
@@ -112,39 +113,57 @@ object UsageNudgeManager {
         if (currentThreshold == 0L) return
 
         val prefs = context.getSharedPreferences("usage_nudges", Context.MODE_PRIVATE)
-        val lastNudgePkg = prefs.getString(PREF_LAST_NUDGE_PKG, "")
         val lastNudgeIndex = prefs.getInt("last_nudge_index", -1)
-        val lastNudgeThreshold = prefs.getLong("last_threshold_$packageName", 0L)
+
+        // Fix: Reset threshold check if it's a new day
+        val lastNudgeTime = prefs.getLong(PREF_LAST_NUDGE_TIME, 0L)
+        val startOfToday = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        val lastThreshold = if (lastNudgeTime < startOfToday) 0L else prefs.getLong("last_threshold_$packageName", 0L)
         
-        if (lastNudgePkg != packageName || currentThreshold > lastNudgeThreshold) {
+        if (currentThreshold > lastThreshold) {
             val appName = UsageStatsHelper.getAppName(context, packageName)
             val formattedTime = UsageStatsHelper.formatScreenTime(totalTimeMillis)
 
             val db = DatabaseProvider.getDatabase(context)
             val nudgeDao = db.nudgeMessageDao()
 
-            var selectedIndex = -1
-
+            var selectedIndex: Int
 
             val (title, randomMessage) = when {
                 totalMinutes >= 240 -> {
                     val cloudMessages = nudgeDao.getMessagesByType("brutal")
-                    val message = if (cloudMessages.isNotEmpty())
-                        cloudMessages.random().content
+                    val messages = if (cloudMessages.isNotEmpty())
+                        cloudMessages.map { it.content }
                     else
-                        localBrutalNudges.random()
+                        localBrutalNudges
 
-                    brutalTitles.random() to message
+                    selectedIndex = (0 until messages.size).random()
+                    if (selectedIndex == lastNudgeIndex && messages.size > 1) {
+                        selectedIndex = (selectedIndex + 1) % messages.size
+                    }
+
+                    brutalTitles.random() to messages[selectedIndex]
                 }
 
                 totalMinutes >= 180 -> {
                     val cloudMessages = nudgeDao.getMessagesByType("rude")
-                    val message = if (cloudMessages.isNotEmpty())
-                        cloudMessages.random().content
+                    val messages = if (cloudMessages.isNotEmpty())
+                        cloudMessages.map { it.content }
                     else
-                        localRudeNudges.random()
+                        localRudeNudges
 
-                    rudeTitles.random() to message
+                    selectedIndex = (0 until messages.size).random()
+                    if (selectedIndex == lastNudgeIndex && messages.size > 1) {
+                        selectedIndex = (selectedIndex + 1) % messages.size
+                    }
+
+                    rudeTitles.random() to messages[selectedIndex]
                 }
 
                 else -> {
