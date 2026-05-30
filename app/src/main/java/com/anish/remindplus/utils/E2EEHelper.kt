@@ -20,23 +20,25 @@ object E2EEHelper {
     private const val ITERATION_COUNT = 1000
     private const val KEY_LENGTH = 256
     
-    // A fixed salt used for key derivation. To ensure cross-device sync, 
-    // this must be identical across all installations of the app.
+    // A fixed salt used for key derivation. Must be identical across all devices.
     private val SALT = "ReMindPlus_Sync_Salt_2024".toByteArray()
 
-    // Cache the derived keys in memory to avoid expensive derivation on every call
+    // Cache the derived keys in memory
     private val keyCache = mutableMapOf<String, SecretKey>()
 
     private fun getSecretKey(userId: String): SecretKey {
-        return keyCache.getOrPut(userId) {
-            deriveKey(userId)
+        val normalizedId = userId.trim().lowercase()
+        return keyCache.getOrPut(normalizedId) {
+            deriveKey(normalizedId)
         }
     }
 
     private fun deriveKey(userId: String): SecretKey {
         return try {
-            // Using HmacSHA1 for compatibility back to API 24
+            // Use HmacSHA1 for universal compatibility (API 1+)
+            // This ensures the same key is generated across all devices regardless of Android version.
             val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1")
+            
             val spec: KeySpec = PBEKeySpec(userId.toCharArray(), SALT, ITERATION_COUNT, KEY_LENGTH)
             val tmp = factory.generateSecret(spec)
             SecretKeySpec(tmp.encoded, ALGORITHM)
@@ -54,6 +56,8 @@ object E2EEHelper {
      */
     fun encrypt(plainText: String?, userId: String): String {
         if (plainText.isNullOrEmpty()) return ""
+        if (userId.isBlank()) return plainText
+        
         return try {
             val cipher = Cipher.getInstance(TRANSFORMATION)
             cipher.init(Cipher.ENCRYPT_MODE, getSecretKey(userId))
@@ -70,7 +74,7 @@ object E2EEHelper {
             Base64.encodeToString(combined, Base64.NO_WRAP)
         } catch (e: Exception) {
             e.printStackTrace()
-            plainText ?: ""
+            plainText
         }
     }
 
@@ -79,11 +83,25 @@ object E2EEHelper {
      */
     fun decrypt(cipherText: String?, userId: String): String {
         if (cipherText.isNullOrEmpty()) return ""
+        if (userId.isBlank()) return cipherText
+        
         return try {
-            val combined = Base64.decode(cipherText, Base64.NO_WRAP)
-            val ivLength = combined[0].toInt()
+            // If it doesn't look like base64 or is too short, return as is
+            if (cipherText.length < 20) return cipherText
             
-            if (ivLength <= 0 || ivLength > combined.size - 1) return cipherText
+            val combined = try { 
+                Base64.decode(cipherText, Base64.NO_WRAP) 
+            } catch (e: Exception) { 
+                return cipherText 
+            }
+            
+            if (combined.isEmpty()) return cipherText
+
+            val ivLength = combined[0].toInt() and 0xFF
+            
+            // Basic sanity check: GCM IV is usually 12 bytes
+            // If it's not 12, this is likely an old plaintext note that happened to be valid Base64
+            if (ivLength != 12 || ivLength > combined.size - 1) return cipherText
 
             val iv = ByteArray(ivLength)
             System.arraycopy(combined, 1, iv, 0, ivLength)
@@ -98,7 +116,7 @@ object E2EEHelper {
             val decryptedBytes = cipher.doFinal(encryptedBytes)
             String(decryptedBytes, Charsets.UTF_8)
         } catch (e: Exception) {
-            // Returns original text if decryption fails (e.g. data was already plaintext)
+            // Returns original text if decryption fails (e.g. wrong key or not encrypted)
             cipherText
         }
     }

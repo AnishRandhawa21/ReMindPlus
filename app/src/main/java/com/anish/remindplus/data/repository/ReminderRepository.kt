@@ -80,6 +80,10 @@ class ReminderRepository(
         dao.markReminderSynced(id)
     }
 
+    suspend fun markRemindersSynced(ids: List<String>) {
+        dao.markRemindersSynced(ids)
+    }
+
     suspend fun insertReminders(
         reminders: List<ReminderEntity>
     ) {
@@ -120,5 +124,9 @@ class ReminderRepository(
             threshold = threshold,
             updatedAt = System.currentTimeMillis()
         )
+    }
+
+    suspend fun markAllRemindersUnsynced() {
+        dao.markAllRemindersUnsynced(getUserId())
     }
 }

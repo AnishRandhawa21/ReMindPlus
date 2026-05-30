@@ -21,13 +21,14 @@ class SyncManager(
 
     suspend fun pushReminders() {
         val unsyncedReminders = reminderRepository.getUnsyncedReminders()
-        unsyncedReminders.forEach { reminder ->
-            SupabaseClient.client
-                .from("reminders")
-                .upsert(reminder.toRemote())
+        if (unsyncedReminders.isEmpty()) return
 
-            reminderRepository.markReminderSynced(reminder.id)
-        }
+        // Bulk upsert all reminders at once for speed
+        SupabaseClient.client
+            .from("reminders")
+            .upsert(unsyncedReminders.map { it.toRemote() })
+
+        reminderRepository.markRemindersSynced(unsyncedReminders.map { it.id })
     }
 
     suspend fun pullReminders() {
@@ -60,13 +61,14 @@ class SyncManager(
 
     suspend fun pushNotes() {
         val unsyncedNotes = noteRepository.getUnsyncedNotes()
-        unsyncedNotes.forEach { note ->
-            SupabaseClient.client
-                .from("notes")
-                .upsert(note.toRemote())
+        if (unsyncedNotes.isEmpty()) return
 
-            noteRepository.markNoteSynced(note.id)
-        }
+        // Bulk upsert all notes at once for speed
+        SupabaseClient.client
+            .from("notes")
+            .upsert(unsyncedNotes.map { it.toRemote() })
+
+        noteRepository.markNotesSynced(unsyncedNotes.map { it.id })
     }
 
     suspend fun pullNotes() {
@@ -106,6 +108,15 @@ class SyncManager(
         // Restore all alarms after pulling fresh data
         val activeReminders = reminderRepository.getScheduledRemindersSync()
         com.anish.remindplus.utils.AlarmScheduler.rescheduleAllReminders(context, activeReminders)
+    }
+
+    suspend fun forceFullResync(context: android.content.Context) {
+        // Mark everything as unsynced so they get encrypted and pushed
+        noteRepository.markAllNotesUnsynced()
+        reminderRepository.markAllRemindersUnsynced()
+        
+        // Then run the sync
+        syncAll(context)
     }
 
     suspend fun pullNudgeMessages() {

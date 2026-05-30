@@ -70,6 +70,10 @@ class NoteRepository(
         dao.markNoteSynced(id)
     }
 
+    suspend fun markNotesSynced(ids: List<String>) {
+        dao.markNotesSynced(ids)
+    }
+
     suspend fun insertNotes(
         notes: List<NoteEntity>
     ) {
@@ -91,5 +95,9 @@ class NoteRepository(
             id = id,
             updatedAt = System.currentTimeMillis()
         )
+    }
+
+    suspend fun markAllNotesUnsynced() {
+        dao.markAllNotesUnsynced(getUserId())
     }
 }

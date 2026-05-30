@@ -296,7 +296,8 @@ class SettingsViewModel(
             try {
                 isLoading = true
                 syncMessage = "Syncing..."
-                syncManager.syncAll(getApplication())
+                // Use forceFullResync once to ensure all local data is encrypted and pushed
+                syncManager.forceFullResync(getApplication())
                 syncMessage = ""
             } catch (e: Exception) {
                 Log.e("SYNC_ERROR", "Sync failed", e)

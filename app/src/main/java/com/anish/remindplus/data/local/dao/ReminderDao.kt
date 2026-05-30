@@ -159,17 +159,17 @@ interface ReminderDao {
         id: String
     )
 
+    @Query("UPDATE reminders SET isSynced = 1 WHERE id IN (:ids)")
+    suspend fun markRemindersSynced(ids: List<String>)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertReminders(
         reminders: List<ReminderEntity>
     )
 
-    @Query("""
-    SELECT * FROM reminders
-    WHERE id = :id
-    LIMIT 1
-""")
-    suspend fun getReminderById(
-        id: String
-    ): ReminderEntity?
+    @Query("SELECT * FROM reminders WHERE id = :id LIMIT 1")
+    suspend fun getReminderById(id: String): ReminderEntity?
+
+    @Query("UPDATE reminders SET isSynced = 0 WHERE userId = :userId")
+    suspend fun markAllRemindersUnsynced(userId: String)
 }

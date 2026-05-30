@@ -85,6 +85,9 @@ interface NoteDao {
         id: String
     )
 
+    @Query("UPDATE notes SET isSynced = 1 WHERE id IN (:ids)")
+    suspend fun markNotesSynced(ids: List<String>)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertNotes(
         notes: List<NoteEntity>
@@ -101,4 +104,7 @@ interface NoteDao {
 
     @Query("DELETE FROM notes")
     suspend fun deleteAllNotes()
+
+    @Query("UPDATE notes SET isSynced = 0 WHERE userId = :userId")
+    suspend fun markAllNotesUnsynced(userId: String)
 }
