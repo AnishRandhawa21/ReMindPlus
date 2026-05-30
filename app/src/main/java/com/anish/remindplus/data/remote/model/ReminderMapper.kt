@@ -1,6 +1,7 @@
 package com.anish.remindplus.data.remote.model
 
 import com.anish.remindplus.data.local.entity.ReminderEntity
+import com.anish.remindplus.utils.E2EEHelper
 
 fun ReminderEntity.toRemote(): RemoteReminder {
 
@@ -10,9 +11,9 @@ fun ReminderEntity.toRemote(): RemoteReminder {
 
         userId = userId,
 
-        title = title,
+        title = E2EEHelper.encrypt(title, userId),
 
-        description = description,
+        description = E2EEHelper.encrypt(description, userId),
 
         createdAt = createdAt,
 
@@ -38,9 +39,9 @@ fun RemoteReminder.toEntity(): ReminderEntity {
 
         userId = userId,
 
-        title = title,
+        title = E2EEHelper.decrypt(title, userId),
 
-        description = description,
+        description = E2EEHelper.decrypt(description, userId),
 
         createdAt = createdAt,
 

@@ -1,6 +1,7 @@
 package com.anish.remindplus.data.remote.model
 
 import com.anish.remindplus.data.local.entity.NoteEntity
+import com.anish.remindplus.utils.E2EEHelper
 
 fun NoteEntity.toRemote(): RemoteNote {
 
@@ -10,9 +11,9 @@ fun NoteEntity.toRemote(): RemoteNote {
 
         userId = userId,
 
-        title = title,
+        title = E2EEHelper.encrypt(title, userId),
 
-        content = content,
+        content = E2EEHelper.encrypt(content, userId),
 
         isPinned = isPinned,
 
@@ -22,7 +23,7 @@ fun NoteEntity.toRemote(): RemoteNote {
 
         isDeleted = isDeleted,
 
-        drawingData = drawingData
+        drawingData = E2EEHelper.encrypt(drawingData, userId)
     )
 }
 
@@ -34,9 +35,9 @@ fun RemoteNote.toEntity(): NoteEntity {
 
         userId = userId,
 
-        title = title,
+        title = E2EEHelper.decrypt(title, userId),
 
-        content = content,
+        content = E2EEHelper.decrypt(content, userId),
 
         isPinned = isPinned,
 
@@ -48,6 +49,6 @@ fun RemoteNote.toEntity(): NoteEntity {
 
         isDeleted = isDeleted,
 
-        drawingData = drawingData
+        drawingData = E2EEHelper.decrypt(drawingData, userId)
     )
 }
