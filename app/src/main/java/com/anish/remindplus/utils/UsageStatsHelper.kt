@@ -47,7 +47,7 @@ object UsageStatsHelper {
         calendar.set(Calendar.MILLISECOND, 0)
         val startTime = calendar.timeInMillis
 
-        return calculateTotalUnionTime(usm, startTime, endTime, context)
+        return calculateTotalUnionTime(usm, startTime, endTime, context, true)
     }
 
     fun getYesterdayScreenTime(context: Context): Long {
@@ -61,16 +61,17 @@ object UsageStatsHelper {
         calendar.add(Calendar.DAY_OF_YEAR, -1)
         val startTime = calendar.timeInMillis
 
-        return calculateTotalUnionTime(usm, startTime, endTime, context)
+        return calculateTotalUnionTime(usm, startTime, endTime, context, true)
     }
 
     private fun calculateTotalUnionTime(
         usm: UsageStatsManager,
         startTime: Long,
         endTime: Long,
-        context: Context
+        context: Context,
+        filtered: Boolean
     ): Long {
-        val appIntervals = getAppIntervals(usm, startTime, endTime, context)
+        val appIntervals = getAppIntervals(usm, startTime, endTime, context, filtered)
         val allIntervals = appIntervals.values.flatten().sortedBy { it.start }
         
         if (allIntervals.isEmpty()) return 0L
@@ -98,7 +99,8 @@ object UsageStatsHelper {
         usm: UsageStatsManager,
         startTime: Long,
         endTime: Long,
-        context: Context
+        context: Context,
+        filtered: Boolean
     ): Map<String, List<UsageInterval>> {
         // Query 12h back to catch sessions crossing midnight
         val queryStartTime = startTime - TimeUnit.HOURS.toMillis(12)
@@ -116,7 +118,7 @@ object UsageStatsHelper {
             // Handle global screen state to close "stuck" sessions
             if (type == UsageEvents.Event.SCREEN_NON_INTERACTIVE || type == UsageEvents.Event.KEYGUARD_SHOWN) {
                 openSessions.forEach { (openPkg, start) ->
-                    closeSession(openPkg, start, event.timeStamp, startTime, endTime, context, appIntervals)
+                    closeSession(openPkg, start, event.timeStamp, startTime, endTime, context, filtered, appIntervals)
                 }
                 openSessions.clear()
                 continue
@@ -133,7 +135,7 @@ object UsageStatsHelper {
                 UsageEvents.Event.MOVE_TO_BACKGROUND, UsageEvents.Event.ACTIVITY_PAUSED -> {
                     val start = openSessions.remove(pkg)
                     if (start != null) {
-                        closeSession(pkg, start, event.timeStamp, startTime, endTime, context, appIntervals)
+                        closeSession(pkg, start, event.timeStamp, startTime, endTime, context, filtered, appIntervals)
                     }
                 }
             }
@@ -141,7 +143,7 @@ object UsageStatsHelper {
 
         // Close sessions still open at the end of the requested range
         openSessions.forEach { (pkg, start) ->
-            closeSession(pkg, start, endTime, startTime, endTime, context, appIntervals)
+            closeSession(pkg, start, endTime, startTime, endTime, context, filtered, appIntervals)
         }
 
         return appIntervals
@@ -151,12 +153,13 @@ object UsageStatsHelper {
         pkg: String, start: Long, end: Long,
         limitStart: Long, limitEnd: Long,
         context: Context,
+        filtered: Boolean,
         resultMap: MutableMap<String, MutableList<UsageInterval>>
     ) {
         val actualStart = max(start, limitStart)
         val actualEnd = min(end, limitEnd)
         
-        if (actualEnd > actualStart && isAllowedAppCached(context, pkg)) {
+        if (actualEnd > actualStart && (!filtered || isAllowedAppCached(context, pkg))) {
             val list = resultMap.getOrPut(pkg) { mutableListOf() }
             list.add(UsageInterval(actualStart, actualEnd))
         }
@@ -172,7 +175,7 @@ object UsageStatsHelper {
         calendar.set(Calendar.MILLISECOND, 0)
         val startTime = calendar.timeInMillis
 
-        val appIntervals = getAppIntervals(usm, startTime, endTime, context)
+        val appIntervals = getAppIntervals(usm, startTime, endTime, context, true)
         
         return appIntervals.map { (pkg, intervals) ->
             AppUsageInfo(
@@ -201,7 +204,7 @@ object UsageStatsHelper {
             
             val endOfDay = startOfDay + TimeUnit.DAYS.toMillis(1) - 1
 
-            val usage = calculateTotalUnionTime(usm, startOfDay, endOfDay, context)
+            val usage = calculateTotalUnionTime(usm, startOfDay, endOfDay, context, true)
             result.add(DailyUsageInfo(getDayLabel(dayCal), usage))
         }
         return result
@@ -223,6 +226,8 @@ object UsageStatsHelper {
         val usm = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val calendar = Calendar.getInstance()
         val endTime = calendar.timeInMillis
+        
+        // Reset to start of current month
         calendar.set(Calendar.DAY_OF_MONTH, 1)
         calendar.set(Calendar.HOUR_OF_DAY, 0)
         calendar.set(Calendar.MINUTE, 0)
@@ -230,14 +235,9 @@ object UsageStatsHelper {
         calendar.set(Calendar.MILLISECOND, 0)
         val startTime = calendar.timeInMillis
 
-        val stats = usm.queryUsageStats(UsageStatsManager.INTERVAL_MONTHLY, startTime, endTime)
-        var total = 0L
-        stats?.forEach { usageStats ->
-            if (usageStats.packageName != context.packageName && (!filtered || isAllowedAppCached(context, usageStats.packageName))) {
-                total += usageStats.totalTimeInForeground
-            }
-        }
-        return total
+        // Using the same interval union logic as getTodayScreenTime ensures 100% consistency.
+        // It correctly handles screen-off time and overlapping apps, which queryUsageStats does not.
+        return calculateTotalUnionTime(usm, startTime, endTime, context, filtered)
     }
 
     fun getTotalHoursInCurrentMonth(): Int {
@@ -315,7 +315,7 @@ object UsageStatsHelper {
         calendar.set(Calendar.MILLISECOND, 0)
         val startTime = calendar.timeInMillis
 
-        val appIntervals = getAppIntervals(usm, startTime, endTime, context)
+        val appIntervals = getAppIntervals(usm, startTime, endTime, context, true)
         return appIntervals[packageName]?.sumOf { it.end - it.start } ?: 0L
     }
 
