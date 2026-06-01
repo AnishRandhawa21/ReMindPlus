@@ -64,7 +64,7 @@ class PreferenceManager private constructor(context: Context) {
         set(value) = sharedPreferences.edit().putBoolean(KEY_NOTIFICATIONS, value).apply()
 
     var notificationSound: String
-        get() = sharedPreferences.getString(KEY_NOTIFICATION_SOUND, "notification_1") ?: "notification_1"
+        get() = sharedPreferences.getString(KEY_NOTIFICATION_SOUND, "notification_3") ?: "notification_3"
         set(value) = sharedPreferences.edit().putString(KEY_NOTIFICATION_SOUND, value).apply()
 
     var monitoringPreset: String
