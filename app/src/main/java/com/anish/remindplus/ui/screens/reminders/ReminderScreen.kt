@@ -99,7 +99,10 @@ private fun groupByTime(reminders: List<ReminderEntity>): Map<String, List<Remin
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ReminderScreen(viewModel: ReminderViewModel) {
+fun ReminderScreen(
+    viewModel: ReminderViewModel,
+    paddingValues: PaddingValues = PaddingValues()
+) {
 
     val quickNotes         by viewModel.quickNotes.collectAsState()
     val scheduledReminders by viewModel.scheduledReminders.collectAsState()
@@ -146,6 +149,7 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
         modifier = Modifier
             .fillMaxSize()
             .background(bgColor)
+            .statusBarsPadding() // Add status bar padding
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
 
@@ -323,7 +327,10 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = 96.dp, top = 4.dp)
+                        contentPadding = PaddingValues(
+                            bottom = paddingValues.calculateBottomPadding() + 80.dp,
+                            top = 4.dp
+                        )
                     ) {
                         val groupedList = groupedTimeline.toList()
                         itemsIndexed(
@@ -378,7 +385,7 @@ fun ReminderScreen(viewModel: ReminderViewModel) {
             onClick       = { showAddDialog = true },
             modifier      = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 24.dp, bottom = 24.dp)
+                .padding(end = 24.dp, bottom = paddingValues.calculateBottomPadding() + 24.dp)
                 .shadow(8.dp, CircleShape),
             containerColor = MaterialTheme.colorScheme.onBackground,
             contentColor   = MaterialTheme.colorScheme.background,

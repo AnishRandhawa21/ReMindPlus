@@ -41,7 +41,8 @@ import com.anish.remindplus.ui.theme.*
 
 @Composable
 fun SettingsScreen(
-    viewModel: SettingsViewModel = viewModel()
+    viewModel: SettingsViewModel = viewModel(),
+    paddingValues: PaddingValues = PaddingValues()
 ) {
     val reminderCount by viewModel.reminderCount.collectAsState()
     val noteCount by viewModel.noteCount.collectAsState()
@@ -122,6 +123,7 @@ fun SettingsScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .statusBarsPadding() // Add status bar padding
     ) {
         // --- Custom Header (Consistent with ReminderScreen) ---
         Column(
@@ -147,7 +149,12 @@ fun SettingsScreen(
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(
+                start = 16.dp, 
+                top = 16.dp, 
+                end = 16.dp, 
+                bottom = paddingValues.calculateBottomPadding() + 80.dp
+            ),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             // ── ACCOUNT SECTION ──────────────────────────────────────────────

@@ -41,7 +41,10 @@ import com.anish.remindplus.ui.theme.*
 import kotlinx.coroutines.delay
 
 @Composable
-fun StatsScreen(viewModel: StatsViewModel = viewModel()) {
+fun StatsScreen(
+    viewModel: StatsViewModel = viewModel(),
+    paddingValues: PaddingValues = PaddingValues()
+) {
     val context = LocalContext.current
     
     val hasPermission by viewModel.hasPermission
@@ -88,7 +91,9 @@ fun StatsScreen(viewModel: StatsViewModel = viewModel()) {
             var current = 0L
             while (!isReady) {
                 delay(16)
-                current += TimeUnit.MINUTES.toMillis(180)
+                // Reduced increment to ~5 minutes per frame (approx 5 hours per second)
+                // to prevent the counter from skyrocketing past realistic values too quickly
+                current += TimeUnit.MINUTES.toMillis(5)
                 value = current
             }
         } else value = monthlyUsageMillis
@@ -97,6 +102,7 @@ fun StatsScreen(viewModel: StatsViewModel = viewModel()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .statusBarsPadding() // Add status bar padding
             .padding(horizontal = 16.dp)
             .padding(top = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -121,8 +127,7 @@ fun StatsScreen(viewModel: StatsViewModel = viewModel()) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(bottom = 24.dp),
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 StatsEntranceTransition(0) {
@@ -152,6 +157,8 @@ fun StatsScreen(viewModel: StatsViewModel = viewModel()) {
                 } else {
                     TopAppsSection(isReady = isReady, topApps = topApps)
                 }
+
+                Spacer(modifier = Modifier.height(paddingValues.calculateBottomPadding() + 80.dp))
             }
         }
     }

@@ -235,9 +235,18 @@ object UsageStatsHelper {
         calendar.set(Calendar.MILLISECOND, 0)
         val startTime = calendar.timeInMillis
 
-        // Using the same interval union logic as getTodayScreenTime ensures 100% consistency.
-        // It correctly handles screen-off time and overlapping apps, which queryUsageStats does not.
-        return calculateTotalUnionTime(usm, startTime, endTime, context, filtered)
+        // Use queryAndAggregateUsageStats for long durations.
+        // UsageEvents (used in calculateTotalUnionTime) are only kept for ~7 days,
+        // making them unsuitable for monthly totals.
+        val stats = usm.queryAndAggregateUsageStats(startTime, endTime)
+        
+        var total = 0L
+        stats.forEach { (pkg, usageStats) ->
+            if (!filtered || isAllowedAppCached(context, pkg)) {
+                total += usageStats.totalTimeInForeground
+            }
+        }
+        return total
     }
 
     fun getTotalHoursInCurrentMonth(): Int {

@@ -5,7 +5,15 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -14,6 +22,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -29,6 +38,7 @@ private val bottomBarHiddenRoutes = setOf(
     Routes.NOTE_EDITOR_WITH_ID
 )
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun MainScreen() {
     val context = LocalContext.current
@@ -59,21 +69,30 @@ fun MainScreen() {
         }
     }
 
-    Scaffold(
-        modifier       = Modifier
-            .fillMaxSize()
-            .swipeToNavigate(navController),
-        containerColor = MaterialTheme.colorScheme.background,
-        bottomBar      = {
-            if (showBottomBar) {
-                BottomNavigationBar(navController)
+    SharedTransitionLayout {
+        Scaffold(
+            modifier       = Modifier
+                .fillMaxSize()
+                .swipeToNavigate(navController),
+            containerColor = MaterialTheme.colorScheme.background,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0), // Disable auto insets to prevent jitter
+            bottomBar      = {
+                AnimatedVisibility(
+                    visible = showBottomBar,
+                    enter = slideInVertically(tween(400)) { it } + fadeIn(),
+                    exit = slideOutVertically(tween(400)) { it } + fadeOut(),
+                ) {
+                    BottomNavigationBar(navController)
+                }
             }
+        ) { paddingValues ->
+            // Pass the padding values but screens can decide how to use them
+            MainNavGraph(
+                navController = navController,
+                paddingValues = paddingValues,
+                showBottomBar = showBottomBar,
+                sharedTransitionScope = this@SharedTransitionLayout
+            )
         }
-    ) { paddingValues ->
-        MainNavGraph(
-            navController = navController,
-            paddingValues = paddingValues,
-            showBottomBar = showBottomBar
-        )
     }
 }

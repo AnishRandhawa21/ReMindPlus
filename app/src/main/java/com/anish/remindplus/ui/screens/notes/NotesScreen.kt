@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.anish.remindplus.data.local.entity.NoteEntity
 import com.anish.remindplus.ui.navigation.Routes
 import com.anish.remindplus.ui.theme.*
@@ -55,11 +56,14 @@ private fun getNoteGradient(id: String): Brush {
     return Brush.verticalGradient(colors)
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun NotesScreen(
     navController: NavController,
-    viewModel: NoteViewModel
+    viewModel: NoteViewModel,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
+    paddingValues: PaddingValues = PaddingValues()
 ) {
     val notes by viewModel.notes.collectAsStateWithLifecycle()
     val isReady by viewModel.isReady.collectAsStateWithLifecycle()
@@ -72,12 +76,22 @@ fun NotesScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(bgColor)
+            .statusBarsPadding()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // ── Screen title ─────────────────────────────────────────────
+            // ── Screen title (Fades out during transition) ──────────────
             Column(
-                modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 12.dp)
+                modifier = Modifier
+                    .padding(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 12.dp)
+                    .then(
+                        with(animatedVisibilityScope) {
+                            Modifier.animateEnterExit(
+                                enter = fadeIn(tween(300)),
+                                exit = fadeOut(tween(150))
+                            )
+                        }
+                    )
             ) {
                 Text(
                     text = "Notes",
@@ -125,11 +139,14 @@ fun NotesScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 16.dp),
-                    contentPadding = PaddingValues(bottom = 100.dp, top = 4.dp),
+                    contentPadding = PaddingValues(
+                        bottom = paddingValues.calculateBottomPadding() + 80.dp,
+                        top = 4.dp
+                    ),
                     verticalItemSpacing = 12.dp,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(notes.size, key = { notes[it].id }) { index ->
+                        items(notes.size, key = { notes[it].id }) { index ->
                         val note = notes[index]
                         
                         // Handles the subtle entrance only once per note
@@ -153,12 +170,22 @@ fun NotesScreen(
                         NoteCard(
                             note        = note,
                             cardBrush   = getNoteGradient(note.id),
-                            modifier    = Modifier
-                                .animateItem() // Handles Add/Delete/Move smoothly
-                                .graphicsLayer {
-                                    this.alpha = alpha
-                                    this.translationY = slideY
-                                },
+                            modifier    = with(sharedTransitionScope) {
+                                Modifier
+                                    .sharedBounds(
+                                        sharedContentState = rememberSharedContentState(key = note.id),
+                                        animatedVisibilityScope = animatedVisibilityScope,
+                                        enter = fadeIn(tween(300)),
+                                        exit = fadeOut(tween(300)),
+                                        boundsTransform = { _, _ -> tween(500, easing = FastOutSlowInEasing) },
+                                        clipInOverlayDuringTransition = OverlayClip(RoundedCornerShape(20.dp))
+                                    )
+                                    .animateItem() 
+                                    .graphicsLayer {
+                                        this.alpha = alpha
+                                        this.translationY = slideY
+                                    }
+                            },
                             onClick     = {
                                 navController.navigate("note_editor/${note.id}")
                             },
@@ -171,17 +198,27 @@ fun NotesScreen(
         }
 
         // ── FAB ──────────────────────────────────────────────────────────
-        FloatingActionButton(
-            onClick = { navController.navigate(Routes.NOTE_EDITOR) },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 24.dp, bottom = 24.dp)
-                .shadow(8.dp, CircleShape),
-            containerColor = MaterialTheme.colorScheme.onBackground,
-            contentColor   = MaterialTheme.colorScheme.background,
-            shape          = CircleShape
-        ) {
-            Icon(Icons.Default.Add, contentDescription = "Add Note")
+        with(sharedTransitionScope) {
+            FloatingActionButton(
+                onClick = { navController.navigate(Routes.NOTE_EDITOR) },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 24.dp, bottom = paddingValues.calculateBottomPadding() + 24.dp)
+                    .sharedBounds(
+                        sharedContentState = rememberSharedContentState(key = "fab_to_editor"),
+                        animatedVisibilityScope = animatedVisibilityScope,
+                        enter = fadeIn(tween(400)),
+                        exit = fadeOut(tween(200)),
+                        boundsTransform = { _, _ -> tween(500, easing = FastOutSlowInEasing) },
+                        clipInOverlayDuringTransition = OverlayClip(CircleShape)
+                    ),
+                containerColor = MaterialTheme.colorScheme.onBackground,
+                contentColor   = MaterialTheme.colorScheme.background,
+                shape          = CircleShape,
+                elevation = FloatingActionButtonDefaults.elevation(8.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add Note")
+            }
         }
     }
 }

@@ -43,7 +43,7 @@ import com.anish.remindplus.ui.screens.notes.model.DrawState
 import com.anish.remindplus.ui.screens.notes.model.DrawTool
 import com.anish.remindplus.ui.screens.notes.model.StrokeData
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun NoteEditorScreen(
     initialTitle  : String       = "",
@@ -51,8 +51,13 @@ fun NoteEditorScreen(
     initialDrawingData: String   = "",
     onBack        : () -> Unit,
     onSave        : (title: String, content: String, drawingData: String) -> Unit,
-    paddingValues : PaddingValues = PaddingValues()
+    paddingValues : PaddingValues = PaddingValues(),
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
+    noteId: String = "new_note"
 ) {
+    val sharedKey = if (noteId == "new_note") "fab_to_editor" else noteId
+
     var title   by remember { mutableStateOf(initialTitle) }
     var content by remember {
         mutableStateOf(TextFieldValue(initialContent, TextRange(initialContent.length)))
@@ -67,20 +72,13 @@ fun NoteEditorScreen(
 
     var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
 
-    // ── Unified scroll state ─────────────────────────────────────────────────
-    // A single ScrollState drives both the BasicTextField column and the drawing
-    // canvas overlay. This is the core of the coordinate-alignment fix.
     val scrollState = rememberScrollState()
-
     val density            = LocalDensity.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusRequester     = remember { FocusRequester() }
     var showStylePicker    by remember { mutableStateOf(false) }
-
-    // Live scroll offset in pixels — read on every frame for the canvas
     val scrollOffsetPx by remember { derivedStateOf { scrollState.value.toFloat() } }
 
-    // Auto-scroll to cursor when typing to keep it visible above keyboard
     LaunchedEffect(content.selection, textLayoutResult) {
         val layout = textLayoutResult ?: return@LaunchedEffect
         val cursor = content.selection.end
@@ -94,39 +92,30 @@ fun NoteEditorScreen(
         if (viewportHeight > 0) {
             val currentScroll = scrollState.value
             if (lineBottom > currentScroll + viewportHeight) {
-                // Scroll down to show cursor at bottom with some padding
                 scrollState.animateScrollTo((lineBottom - viewportHeight + 80).toInt())
             } else if (lineTop < currentScroll) {
-                // Scroll up to show cursor at top
                 scrollState.animateScrollTo(lineTop.toInt())
             }
         }
     }
 
-    // ── Editor / Draw mode state ─────────────────────────────────────────────
     var editorMode       by remember { mutableStateOf(EditorMode.TEXT) }
     val defaultStrokeColor = MaterialTheme.colorScheme.onBackground
-
-    // Default highlight colour: bright yellow works on both light and dark themes
     val defaultHighlightColor = Color(0xFFFFEB3B)
 
     var drawState by remember {
         mutableStateOf(DrawState(strokeColor = defaultStrokeColor))
     }
 
-    // Single stroke list shared across all modes
-    // Keyed by initialDrawingData length/hash to allow re-initialization if the underlying note changes
     val drawingStrokes = remember(initialDrawingData) {
         val initialStrokes = DrawingMapper.deserializeList(initialDrawingData)
         mutableStateListOf<StrokeData>().apply { addAll(initialStrokes) }
     }
     
-    // ── Derived flags ────────────────────────────────────────────────────────
     val isTextInputEnabled = editorMode == EditorMode.TEXT
     val isDrawingActive    = editorMode == EditorMode.DRAW || editorMode == EditorMode.HIGHLIGHT
     val isHighlightActive  = editorMode == EditorMode.HIGHLIGHT
 
-    // ── Checklist Logic ──────────────────────────────────────────────────────
     fun toggleChecklistAtCursor() {
         val text       = content.text
         val selection  = content.selection
@@ -169,28 +158,23 @@ fun NoteEditorScreen(
         content = TextFieldValue(text = newText, selection = TextRange(newCursor))
     }
 
-    // ── Style Selection Logic ───────────────────────────────────────────────
     val applyTextStyle = { prefix: String ->
         val text       = content.text
         val selection  = content.selection
         val textBefore = text.take(selection.start)
         val lineStart  = textBefore.lastIndexOf('\n') + 1
-        
         val currentLine = text.substring(lineStart).split('\n').first()
-        
         val knownPrefixes = listOf("# ", "## ", "| ", "• ", "☐ ", "☑ ")
         var newLine = currentLine
         knownPrefixes.find { currentLine.startsWith(it) }?.let {
             newLine = currentLine.substring(it.length)
         }
-        
         if (newLine.getOrNull(0)?.isDigit() == true && newLine.contains(". ")) {
             val prefixPart = newLine.substringBefore(". ")
             if (prefixPart.all { it.isDigit() }) {
                 newLine = newLine.substring(prefixPart.length + 2)
             }
         }
-        
         val newText = text.substring(0, lineStart) + prefix + newLine + text.substring(lineStart + currentLine.length)
         content = content.copy(
             text = newText,
@@ -198,7 +182,6 @@ fun NoteEditorScreen(
         )
     }
 
-    // ── Visual Transformation for Styles & Checklist ────────────────────────
     val noteVisualTransformation = remember(primaryColor, onBg, onBgVariant) {
         VisualTransformation { text ->
             val transformed = buildAnnotatedString {
@@ -206,8 +189,6 @@ fun NoteEditorScreen(
                 lines.forEachIndexed { i, line ->
                     when {
                         line.startsWith("# ") -> {
-                            // H1 Style: bold, larger, primary color
-                            // Prefix is hidden and takes no space
                             withStyle(SpanStyle(color = Color.Transparent, fontSize = 0.sp)) {
                                 append("# ")
                             }
@@ -216,7 +197,6 @@ fun NoteEditorScreen(
                             }
                         }
                         line.startsWith("## ") -> {
-                            // H2 Style: bold, slightly larger
                             withStyle(SpanStyle(color = Color.Transparent, fontSize = 0.sp)) {
                                 append("## ")
                             }
@@ -225,8 +205,6 @@ fun NoteEditorScreen(
                             }
                         }
                         line.startsWith("| ") -> {
-                            // Note Bar: Italicized with a visible bar
-                            // Prefix "|" is visible, space is hidden and takes no space
                             withStyle(SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold)) {
                                 append("|")
                             }
@@ -241,13 +219,11 @@ fun NoteEditorScreen(
                             withStyle(SpanStyle(color = Color.Transparent, letterSpacing = 6.sp)) {
                                 append(line.take(2))
                             }
-                            // Apply smaller font size to checklist items
                             withStyle(SpanStyle(fontSize = 14.sp)) {
                                 append(line.substring(2))
                             }
                         }
                         line.getOrNull(0)?.isDigit() == true && line.contains(". ") && line.substringBefore(". ").all { it.isDigit() } -> {
-                            // Numbered list: style the number + dot
                             val prefix = line.substringBefore(". ") + ". "
                             withStyle(SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold)) {
                                 append(prefix)
@@ -263,416 +239,384 @@ fun NoteEditorScreen(
         }
     }
 
-    // ────────────────────────────────────────────────────────────────────────
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(bgColor)
-            .padding(paddingValues)
-            .imePadding()
-    ) {
-
-        // ── Top bar ──────────────────────────────────────────────────────────
-        Row(
+    with(sharedTransitionScope) {
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .padding(horizontal = 4.dp),
-            verticalAlignment     = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint               = onBg
+                .fillMaxSize()
+                .sharedBounds(
+                    sharedContentState = rememberSharedContentState(key = sharedKey),
+                    animatedVisibilityScope = animatedVisibilityScope,
+                    enter = fadeIn(tween(400)),
+                    exit = fadeOut(tween(300)),
+                    boundsTransform = { _, _ -> tween(500, easing = FastOutSlowInEasing) },
+                    clipInOverlayDuringTransition = OverlayClip(RoundedCornerShape(20.dp))
                 )
-            }
-
-            val isNoteValid = title.isNotBlank() || content.text.isNotBlank() || drawingStrokes.isNotEmpty()
-            val interactionSource = remember { MutableInteractionSource() }
-            
-            Box(
+                .background(bgColor)
+                .statusBarsPadding()
+                .padding(paddingValues)
+                .imePadding()
+        ) {
+            Row(
                 modifier = Modifier
-                    .padding(end = 16.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(if (isNoteValid) onBg else onBg.copy(alpha = 0.12f))
-                    .clickable(
-                        interactionSource = interactionSource,
-                        indication        = null,
-                        enabled           = isNoteValid,
-                        onClick           = {
-                            val serializedDrawing = DrawingMapper.serializeList(drawingStrokes)
-                            onSave(title.trim(), content.text.trim(), serializedDrawing)
-                        }
-                    )
-                    .padding(horizontal = 18.dp, vertical = 9.dp),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .padding(horizontal = 4.dp),
+                verticalAlignment     = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(
-                    verticalAlignment     = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
+                IconButton(onClick = onBack) {
                     Icon(
-                        Icons.Default.Check,
-                        contentDescription = "Save",
-                        tint               = if (isNoteValid) bgColor else onBg.copy(alpha = 0.38f),
-                        modifier           = Modifier.size(14.dp)
-                    )
-                    Text(
-                        text  = "Save",
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                        color = if (isNoteValid) bgColor else onBg.copy(alpha = 0.38f)
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint               = onBg
                     )
                 }
-            }
-        }
 
-        // ── Title ────────────────────────────────────────────────────────────
-        BasicTextField(
-            value         = title,
-            onValueChange = { title = it },
-            textStyle = TextStyle(
-                fontSize   = 24.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color      = onBg,
-                lineHeight = 30.sp
-            ),
-            cursorBrush     = SolidColor(onBg),
-            singleLine      = true,
-            keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.Sentences,
-                imeAction      = ImeAction.Next
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 10.dp),
-            decorationBox = { inner ->
-                Box {
-                    if (title.isEmpty()) {
+                val isNoteValid = title.isNotBlank() || content.text.isNotBlank() || drawingStrokes.isNotEmpty()
+                val interactionSource = remember { MutableInteractionSource() }
+                
+                Box(
+                    modifier = Modifier
+                        .padding(end = 16.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (isNoteValid) onBg else onBg.copy(alpha = 0.12f))
+                        .clickable(
+                            interactionSource = interactionSource,
+                            indication        = null,
+                            enabled           = isNoteValid,
+                            onClick           = {
+                                val serializedDrawing = DrawingMapper.serializeList(drawingStrokes)
+                                onSave(title.trim(), content.text.trim(), serializedDrawing)
+                            }
+                        )
+                        .padding(horizontal = 18.dp, vertical = 9.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        verticalAlignment     = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Check,
+                            contentDescription = "Save",
+                            tint               = if (isNoteValid) bgColor else onBg.copy(alpha = 0.38f),
+                            modifier           = Modifier.size(14.dp)
+                        )
                         Text(
-                            "Title",
-                            style = TextStyle(
-                                fontSize   = 24.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color      = onBgVariant.copy(alpha = 0.35f)
-                            )
+                            text  = "Save",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = if (isNoteValid) bgColor else onBg.copy(alpha = 0.38f)
                         )
                     }
-                    inner()
                 }
             }
-        )
 
-        HorizontalDivider(
-            modifier  = Modifier.padding(horizontal = 20.dp),
-            color     = outline,
-            thickness = 0.5.dp
-        )
-
-        Spacer(modifier = Modifier.height(6.dp))
-
-        // ── Toolbar ──────────────────────────────────────────────────────────
-        NoteEditorToolbar(
-            mode              = editorMode,
-            drawState         = drawState,
-            onInsert          = { insertAtCursor(it) },
-            onToggleChecklist = { toggleChecklistAtCursor() },
-            onEnterHighlight  = {
-                // Quick highlighter: stay in text-toolbar-like mode, just overlay canvas
-                editorMode = EditorMode.HIGHLIGHT
-                keyboardController?.hide()
-                drawState = drawState.copy(
-                    activeTool  = DrawTool.Highlighter,
-                    strokeColor = defaultHighlightColor,
-                    strokeWidth = 14f
-                )
-            },
-            onExitHighlight   = {
-                editorMode = EditorMode.TEXT
-                drawState  = drawState.copy(
-                    activeTool  = DrawTool.Pen,
-                    strokeColor = defaultStrokeColor,
-                    strokeWidth = 8f
-                )
-            },
-            onEnterDraw = {
-                editorMode = EditorMode.DRAW
-                keyboardController?.hide()
-                // Reset to default pen color if we were highlighting
-                val targetColor = if (drawState.activeTool == DrawTool.Highlighter) defaultStrokeColor else drawState.strokeColor
-                drawState = drawState.copy(
-                    activeTool  = DrawTool.Pen,
-                    strokeColor = targetColor
-                )
-            },
-            onExitDraw = {
-                editorMode = EditorMode.TEXT
-                drawState  = drawState.copy(activeTool = DrawTool.Pen)
-            },
-            onDrawTool = { tool ->
-                drawState = drawState.copy(activeTool = tool)
-            },
-            onUndo = {
-                drawState = drawState.copy(undoTrigger = drawState.undoTrigger + 1)
-            },
-            onColorPick = { color ->
-                drawState = drawState.copy(strokeColor = color)
-            },
-            onStrokeWidth = { width ->
-                drawState = drawState.copy(strokeWidth = width)
-            },
-            onStyleSelect = { applyTextStyle(it) },
-            onShowStylePicker = { showStylePicker = true }
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // ── Unified Canvas + Editor ──────────────────────────────────────────
-        // Architecture:
-        //   • The outer Box clips to the visible area.
-        //   • Both the text column AND the drawing canvas share `scrollState`.
-        //   • Text column scrolls normally via .verticalScroll(scrollState).
-        //   • DrawingCanvas receives the current scroll offset and compensates
-        //     each stroke's Y position by (stroke.scrollOffsetPx - currentOffset).
-        //   • Canvas is always rendered (alpha = 0 in pure TEXT mode to avoid
-        //     hiding strokes during mode changes). Only pointer input is gated.
-        //
-        // This gives a single coordinate space: strokes drawn at scroll=300px
-        // will shift up by 300px when the note is scrolled back to 0 — exactly
-        // mirroring how the text content moves.
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .clipToBounds()
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    enabled = editorMode == EditorMode.TEXT
-                ) {
-                    focusRequester.requestFocus()
-                }
-        ) {
-            // ── Text layer (scrollable) ──────────────────────────────────────
             BasicTextField(
-                value         = content,
-                onValueChange = { newValue ->
-                    val oldText = content.text
-                    val newText = newValue.text
-
-                    // Smart Enter — auto-continue list prefixes
-                    if (newText.length == oldText.length + 1 &&
-                        newValue.selection.start > 0 &&
-                        newText[newValue.selection.start - 1] == '\n'
-                    ) {
-                        val pos        = newValue.selection.start - 1
-                        val textBefore = newText.substring(0, pos)
-                        val lineStart  = textBefore.lastIndexOf('\n') + 1
-                        val line       = textBefore.substring(lineStart)
-                        val prefixes   = listOf("• ", "☐ ", "☑ ", "# ", "## ", "| ")
-                        val prefix     = prefixes.find { line.startsWith(it) } ?: run {
-                            // Check for numbered list
-                            if (line.getOrNull(0)?.isDigit() == true && line.contains(". ")) {
-                                val p = line.substringBefore(". ") + ". "
-                                if (p.dropLast(2).all { it.isDigit() }) p else null
-                            } else null
-                        }
-
-                        if (prefix != null) {
-                            val isNumbered = prefix.contains(". ")
-                            val lineContent = line.substring(prefix.length).trim()
-                            
-                            if (lineContent.isEmpty()) {
-                                // Deleting an empty list item — remove prefix
-                                val updated = newText.substring(0, lineStart) + newText.substring(pos + 1)
-                                content = TextFieldValue(updated, TextRange(lineStart))
-                                return@BasicTextField
-                            } else {
-                                // Continue list
-                                val newPrefix = when {
-                                    prefix.contains("☐") || prefix.contains("☑") -> "☐ "
-                                    prefix == "# " || prefix == "## " || prefix == "| " -> prefix
-                                    isNumbered -> {
-                                        val num = prefix.substringBefore(". ").toIntOrNull() ?: 1
-                                        "${num + 1}. "
-                                    }
-                                    else -> prefix
-                                }
-                                val updated   = newText.substring(0, pos + 1) + newPrefix + newText.substring(pos + 1)
-                                content = TextFieldValue(updated, TextRange(pos + 1 + newPrefix.length))
-                                return@BasicTextField
-                            }
-                        }
-                    }
-
-                    // Smart Backspace — remove checklist/style prefix on backspace at start
-                    if (newText.length == oldText.length - 1 &&
-                        content.selection.start == newValue.selection.start + 1
-                    ) {
-                        val deletedPos = newValue.selection.start
-                        val textBefore = oldText.substring(0, deletedPos + 1)
-                        val lineStart  = textBefore.lastIndexOf('\n') + 1
-                        val line       = oldText.substring(lineStart)
-
-                        // 1. Checkboxes
-                        if ((line.startsWith("☐ ") || line.startsWith("☑ ")) &&
-                            (deletedPos - lineStart) < 2
-                        ) {
-                            val updated = oldText.substring(0, lineStart) + oldText.substring(lineStart + 2)
-                            content = TextFieldValue(updated, TextRange(lineStart))
-                            return@BasicTextField
-                        }
-
-                        // 2. Style Prefixes (#, ##, |, numbered)
-                        val stylePrefixes = listOf("# ", "## ", "| ", "• ", "☐ ", "☑ ")
-                        var foundPrefix: String? = stylePrefixes.find { line.startsWith(it) }
-                        
-                        if (foundPrefix == null && line.getOrNull(0)?.isDigit() == true && line.contains(". ")) {
-                            val p = line.substringBefore(". ") + ". "
-                            if (p.dropLast(2).all { it.isDigit() }) foundPrefix = p
-                        }
-
-                        foundPrefix?.let { prefix ->
-                            if ((deletedPos - lineStart) < prefix.length) {
-                                val updated = oldText.substring(0, lineStart) + oldText.substring(lineStart + prefix.length)
-                                content = TextFieldValue(updated, TextRange(lineStart))
-                                return@BasicTextField
-                            }
-                        }
-                    }
-
-                    content = newValue
-                },
-                onTextLayout         = { textLayoutResult = it },
-                visualTransformation = noteVisualTransformation,
+                value         = title,
+                onValueChange = { title = it },
                 textStyle = TextStyle(
-                    fontSize   = 16.sp,
+                    fontSize   = 24.sp,
+                    fontWeight = FontWeight.ExtraBold,
                     color      = onBg,
-                    lineHeight = 24.sp,
-                    fontWeight = FontWeight.Normal
+                    lineHeight = 30.sp
                 ),
-                cursorBrush = SolidColor(onBg),
-                // Disable input when a drawing or highlight tool is active
-                enabled         = isTextInputEnabled,
+                cursorBrush     = SolidColor(onBg),
+                singleLine      = true,
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.Sentences,
-                    imeAction      = ImeAction.None
+                    imeAction      = ImeAction.Next
                 ),
                 modifier = Modifier
-                    .fillMaxSize()
-                    .focusRequester(focusRequester)
-                    .verticalScroll(scrollState)
-                    .padding(horizontal = 20.dp)
-                    .padding(bottom = 200.dp), // extra bottom padding so strokes near end remain reachable
-                decorationBox = { innerTextField ->
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 10.dp),
+                decorationBox = { inner ->
                     Box {
-                        textLayoutResult?.let { layout ->
-                            val layoutText = layout.layoutInput.text.text
-                            var logicalLineIndex = 0
-                            var charIndex = 0
-                            while (charIndex < layoutText.length) {
-                                val isChecked = layoutText.startsWith("☑ ", charIndex)
-                                val isUnchecked = layoutText.startsWith("☐ ", charIndex)
-
-                                if (isChecked || isUnchecked) {
-                                    val lineInLayout = layout.getLineForOffset(charIndex)
-                                    val topPx = layout.getLineTop(lineInLayout)
-                                    val bottomPx = layout.getLineBottom(lineInLayout)
-                                    val centerDp = with(density) { ((topPx + bottomPx) / 2).toDp() }
-                                    val cbSize = 18.dp
-
-                                    val currentLine = logicalLineIndex
-                                    key(charIndex) {
-                                        NoteCheckbox(
-                                            checked = isChecked,
-                                            onCheckedChange = { toggleLine(currentLine) },
-                                            modifier = Modifier
-                                                .offset(
-                                                    x = 0.dp,
-                                                    y = centerDp - (cbSize / 2) + 2.3.dp
-                                                )
-                                                .size(cbSize)
-                                        )
-                                    }
-                                }
-
-                                val nextNewline = layoutText.indexOf('\n', charIndex)
-                                if (nextNewline == -1) break
-                                charIndex = nextNewline + 1
-                                logicalLineIndex++
-                            }
-                        }
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            if (content.text.isEmpty() && drawingStrokes.isEmpty()) {
-                                Text(
-                                    text = if (isDrawingActive) "Start doodling..." else "Start writing...",
-                                    style = TextStyle(
-                                        fontSize = 16.sp,
-                                        color    = onBgVariant.copy(alpha = 0.35f)
-                                    )
+                        if (title.isEmpty()) {
+                            Text(
+                                "Title",
+                                style = TextStyle(
+                                    fontSize   = 24.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color      = onBgVariant.copy(alpha = 0.35f)
                                 )
-                            }
-                            innerTextField()
+                            )
                         }
+                        inner()
                     }
                 }
             )
 
-            // ── Drawing canvas layer ─────────────────────────────────────────
-            // Always composed (so strokes are never lost across mode changes).
-            // Pointer input is only active when a drawing tool is engaged.
-            // Canvas matches the scrollable height via fillMaxSize; the parent
-            // Box clips it to the visible viewport.
-            DrawingCanvas(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 20.dp),   // match text horizontal padding
-                strokes          = drawingStrokes,
-                undoTrigger      = drawState.undoTrigger,
-                isEraserMode     = drawState.isEraserMode && editorMode == EditorMode.DRAW,
-                isHighlightMode  = isHighlightActive,
-                strokeColor      = drawState.strokeColor,
-                strokeWidth      = drawState.strokeWidth,
-                scrollOffsetPx   = scrollOffsetPx,
-                drawingEnabled   = isDrawingActive
+            HorizontalDivider(
+                modifier  = Modifier.padding(horizontal = 20.dp),
+                color     = outline,
+                thickness = 0.5.dp
             )
 
-            // ── Floating Style Picker ────────────────────────────────────────
-            if (showStylePicker) {
-                textLayoutResult?.let { layout ->
-                    val cursorOffset = content.selection.end
-                    val line = layout.getLineForOffset(cursorOffset)
-                    val lineBottom = layout.getLineBottom(line)
-                    val lineEndOffset = layout.getLineEnd(line)
-                    val lineEndRect = layout.getCursorRect(lineEndOffset)
+            Spacer(modifier = Modifier.height(6.dp))
 
-                    // Position it at the end of the current line, or fallback to cursor
-                    val xPos = (lineEndRect.left + 20).toInt() // +20 for padding
-                    val yPos = (lineBottom - scrollOffsetPx).toInt()
+            NoteEditorToolbar(
+                mode              = editorMode,
+                drawState         = drawState,
+                onInsert          = { insertAtCursor(it) },
+                onToggleChecklist = { toggleChecklistAtCursor() },
+                onEnterHighlight  = {
+                    editorMode = EditorMode.HIGHLIGHT
+                    keyboardController?.hide()
+                    drawState = drawState.copy(
+                        activeTool  = DrawTool.Highlighter,
+                        strokeColor = defaultHighlightColor,
+                        strokeWidth = 14f
+                    )
+                },
+                onExitHighlight   = {
+                    editorMode = EditorMode.TEXT
+                    drawState  = drawState.copy(
+                        activeTool  = DrawTool.Pen,
+                        strokeColor = defaultStrokeColor,
+                        strokeWidth = 8f
+                    )
+                },
+                onEnterDraw = {
+                    editorMode = EditorMode.DRAW
+                    keyboardController?.hide()
+                    val targetColor = if (drawState.activeTool == DrawTool.Highlighter) defaultStrokeColor else drawState.strokeColor
+                    drawState = drawState.copy(
+                        activeTool  = DrawTool.Pen,
+                        strokeColor = targetColor
+                    )
+                },
+                onExitDraw = {
+                    editorMode = EditorMode.TEXT
+                    drawState  = drawState.copy(activeTool = DrawTool.Pen)
+                },
+                onDrawTool = { tool ->
+                    drawState = drawState.copy(activeTool = tool)
+                },
+                onUndo = {
+                    drawState = drawState.copy(undoTrigger = drawState.undoTrigger + 1)
+                },
+                onColorPick = { color ->
+                    drawState = drawState.copy(strokeColor = color)
+                },
+                onStrokeWidth = { width ->
+                    drawState = drawState.copy(strokeWidth = width)
+                },
+                onStyleSelect = { applyTextStyle(it) },
+                onShowStylePicker = { showStylePicker = true }
+            )
 
-                    Popup(
-                        offset = IntOffset(xPos, yPos),
-                        onDismissRequest = { showStylePicker = false }
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .clipToBounds()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        enabled = editorMode == EditorMode.TEXT
                     ) {
-                        StylePickerBubble(
-                            onStyleSelected = { prefix ->
-                                applyTextStyle(prefix)
-                                showStylePicker = false
-                            },
-                            onDismiss = { showStylePicker = false }
-                        )
+                        focusRequester.requestFocus()
+                    }
+            ) {
+                BasicTextField(
+                    value         = content,
+                    onValueChange = { newValue ->
+                        val oldText = content.text
+                        val newText = newValue.text
+
+                        if (newText.length == oldText.length + 1 &&
+                            newValue.selection.start > 0 &&
+                            newText[newValue.selection.start - 1] == '\n'
+                        ) {
+                            val pos        = newValue.selection.start - 1
+                            val textBefore = newText.substring(0, pos)
+                            val lineStart  = textBefore.lastIndexOf('\n') + 1
+                            val line       = textBefore.substring(lineStart)
+                            val prefixes   = listOf("• ", "☐ ", "☑ ", "# ", "## ", "| ")
+                            val prefix     = prefixes.find { line.startsWith(it) } ?: run {
+                                if (line.getOrNull(0)?.isDigit() == true && line.contains(". ")) {
+                                    val p = line.substringBefore(". ") + ". "
+                                    if (p.dropLast(2).all { it.isDigit() }) p else null
+                                } else null
+                            }
+
+                            if (prefix != null) {
+                                val isNumbered = prefix.contains(". ")
+                                val lineContent = line.substring(prefix.length).trim()
+                                
+                                if (lineContent.isEmpty()) {
+                                    val updated = newText.substring(0, lineStart) + newText.substring(pos + 1)
+                                    content = TextFieldValue(updated, TextRange(lineStart))
+                                    return@BasicTextField
+                                } else {
+                                    val newPrefix = when {
+                                        prefix.contains("☐") || prefix.contains("☑") -> "☐ "
+                                        prefix == "# " || prefix == "## " || prefix == "| " -> prefix
+                                        isNumbered -> {
+                                            val num = prefix.substringBefore(". ").toIntOrNull() ?: 1
+                                            "${num + 1}. "
+                                        }
+                                        else -> prefix
+                                    }
+                                    val updated   = newText.substring(0, pos + 1) + newPrefix + newText.substring(pos + 1)
+                                    content = TextFieldValue(updated, TextRange(pos + 1 + newPrefix.length))
+                                    return@BasicTextField
+                                }
+                            }
+                        }
+
+                        if (newText.length == oldText.length - 1 &&
+                            content.selection.start == newValue.selection.start + 1
+                        ) {
+                            val deletedPos = newValue.selection.start
+                            val textBefore = oldText.substring(0, deletedPos + 1)
+                            val lineStart  = textBefore.lastIndexOf('\n') + 1
+                            val line       = oldText.substring(lineStart)
+
+                            if ((line.startsWith("☐ ") || line.startsWith("☑ ")) &&
+                                (deletedPos - lineStart) < 2
+                            ) {
+                                val updated = oldText.substring(0, lineStart) + oldText.substring(lineStart + 2)
+                                content = TextFieldValue(updated, TextRange(lineStart))
+                                return@BasicTextField
+                            }
+
+                            val stylePrefixes = listOf("# ", "## ", "| ", "• ", "☐ ", "☑ ")
+                            var foundPrefix: String? = stylePrefixes.find { line.startsWith(it) }
+                            
+                            if (foundPrefix == null && line.getOrNull(0)?.isDigit() == true && line.contains(". ")) {
+                                val p = line.substringBefore(". ") + ". "
+                                if (p.dropLast(2).all { it.isDigit() }) foundPrefix = p
+                            }
+
+                            foundPrefix?.let { prefix ->
+                                if ((deletedPos - lineStart) < prefix.length) {
+                                    val updated = oldText.substring(0, lineStart) + oldText.substring(lineStart + prefix.length)
+                                    content = TextFieldValue(updated, TextRange(lineStart))
+                                    return@BasicTextField
+                                }
+                            }
+                        }
+                        content = newValue
+                    },
+                    onTextLayout         = { textLayoutResult = it },
+                    visualTransformation = noteVisualTransformation,
+                    textStyle = TextStyle(
+                        fontSize   = 16.sp,
+                        color      = onBg,
+                        lineHeight = 24.sp,
+                        fontWeight = FontWeight.Normal
+                    ),
+                    cursorBrush = SolidColor(onBg),
+                    enabled         = isTextInputEnabled,
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                        imeAction      = ImeAction.None
+                    ),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .focusRequester(focusRequester)
+                        .verticalScroll(scrollState)
+                        .padding(horizontal = 20.dp)
+                        .padding(bottom = 200.dp),
+                    decorationBox = { innerTextField ->
+                        Box {
+                            textLayoutResult?.let { layout ->
+                                val layoutText = layout.layoutInput.text.text
+                                var logicalLineIndex = 0
+                                var charIndex = 0
+                                while (charIndex < layoutText.length) {
+                                    val isChecked = layoutText.startsWith("☑ ", charIndex)
+                                    val isUnchecked = layoutText.startsWith("☐ ", charIndex)
+
+                                    if (isChecked || isUnchecked) {
+                                        val lineInLayout = layout.getLineForOffset(charIndex)
+                                        val topPx = layout.getLineTop(lineInLayout)
+                                        val bottomPx = layout.getLineBottom(lineInLayout)
+                                        val centerDp = with(density) { ((topPx + bottomPx) / 2).toDp() }
+                                        val cbSize = 18.dp
+
+                                        val currentLine = logicalLineIndex
+                                        key(charIndex) {
+                                            NoteCheckbox(
+                                                checked = isChecked,
+                                                onCheckedChange = { toggleLine(currentLine) },
+                                                modifier = Modifier
+                                                    .offset(
+                                                        x = 0.dp,
+                                                        y = centerDp - (cbSize / 2) + 2.3.dp
+                                                    )
+                                                    .size(cbSize)
+                                            )
+                                        }
+                                    }
+
+                                    val nextNewline = layoutText.indexOf('\n', charIndex)
+                                    if (nextNewline == -1) break
+                                    charIndex = nextNewline + 1
+                                    logicalLineIndex++
+                                }
+                            }
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                if (content.text.isEmpty() && drawingStrokes.isEmpty()) {
+                                    Text(
+                                        text = if (isDrawingActive) "Start doodling..." else "Start writing...",
+                                        style = TextStyle(
+                                            fontSize = 16.sp,
+                                            color    = onBgVariant.copy(alpha = 0.35f)
+                                        )
+                                    )
+                                }
+                                innerTextField()
+                            }
+                        }
+                    }
+                )
+
+                DrawingCanvas(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 20.dp),
+                    strokes          = drawingStrokes,
+                    undoTrigger      = drawState.undoTrigger,
+                    isEraserMode     = drawState.isEraserMode && editorMode == EditorMode.DRAW,
+                    isHighlightMode  = isHighlightActive,
+                    strokeColor      = drawState.strokeColor,
+                    strokeWidth      = drawState.strokeWidth,
+                    scrollOffsetPx   = scrollOffsetPx,
+                    drawingEnabled   = isDrawingActive
+                )
+
+                if (showStylePicker) {
+                    textLayoutResult?.let { layout ->
+                        val cursorOffset = content.selection.end
+                        val line = layout.getLineForOffset(cursorOffset)
+                        val lineBottom = layout.getLineBottom(line)
+                        val lineEndOffset = layout.getLineEnd(line)
+                        val lineEndRect = layout.getCursorRect(lineEndOffset)
+                        val xPos = (lineEndRect.left + 20).toInt()
+                        val yPos = (lineBottom - scrollOffsetPx).toInt()
+
+                        Popup(
+                            offset = IntOffset(xPos, yPos),
+                            onDismissRequest = { showStylePicker = false }
+                        ) {
+                            StylePickerBubble(
+                                onStyleSelected = { prefix ->
+                                    applyTextStyle(prefix)
+                                    showStylePicker = false
+                                },
+                                onDismiss = { showStylePicker = false }
+                            )
+                        }
                     }
                 }
             }
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Premium Floating Style Picker Bubble
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun StylePickerBubble(
@@ -738,11 +682,6 @@ private fun StylePickerBubble(
         }
     }
 }
-
-// ── Highlight-mode indicator banner ──────────────────────────────────────────
-// (Shown inside NoteEditorToolbar, not here — see toolbar file.)
-
-// ── Custom Components ─────────────────────────────────────────────────────────
 
 @Composable
 private fun NoteCheckbox(

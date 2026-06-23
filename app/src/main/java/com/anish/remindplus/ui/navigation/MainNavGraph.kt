@@ -1,6 +1,8 @@
 package com.anish.remindplus.ui.navigation
 
 import android.app.Application
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -43,11 +45,13 @@ import com.anish.remindplus.ui.animation.fabExpandEnter
 import com.anish.remindplus.ui.animation.fabCollapseExit
 import com.anish.remindplus.ui.animation.fabPopEnter
 import com.anish.remindplus.ui.animation.fabPopExit
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun MainNavGraph(
     navController: NavHostController,
     paddingValues: PaddingValues,
-    showBottomBar: Boolean = true
+    showBottomBar: Boolean = true,
+    sharedTransitionScope: SharedTransitionScope
 ) {
     val context           = LocalContext.current
     val database          = DatabaseProvider.getDatabase(context)
@@ -77,7 +81,7 @@ fun MainNavGraph(
     NavHost(
         navController       = navController,
         startDestination    = Routes.REMINDERS,
-        modifier            = if (showBottomBar) Modifier.padding(paddingValues) else Modifier,
+        modifier            = Modifier, // Removing conditional padding for stable shared transitions
         enterTransition     = { defaultEnterTransition },
         exitTransition      = { defaultExitTransition  },
         popEnterTransition  = { defaultEnterTransition },
@@ -92,7 +96,7 @@ fun MainNavGraph(
             popEnterTransition  = { targetTabIsToTheRight()?.let { tabEnterTransition(it) } ?: defaultEnterTransition },
             popExitTransition   = { targetTabIsToTheRight()?.let { tabExitTransition(it)  } ?: defaultExitTransition  }
         ) {
-            ReminderScreen(viewModel)
+            ReminderScreen(viewModel, paddingValues = paddingValues)
         }
 
         // ── NOTES ─────────────────────────────────────────────────────────────
@@ -103,7 +107,13 @@ fun MainNavGraph(
             popEnterTransition  = { targetTabIsToTheRight()?.let { tabEnterTransition(it) } ?: defaultEnterTransition },
             popExitTransition   = { targetTabIsToTheRight()?.let { tabExitTransition(it)  } ?: defaultExitTransition  }
         ) {
-            NotesScreen(navController = navController, viewModel = noteViewModel)
+            NotesScreen(
+                navController = navController,
+                viewModel = noteViewModel,
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = this@composable,
+                paddingValues = paddingValues
+            )
         }
 
         // In MainNavGraph — new note
@@ -115,12 +125,15 @@ fun MainNavGraph(
             popExitTransition  = { fabPopExit      }
         ) {
             NoteEditorScreen(
-                paddingValues = paddingValues,   // ← from MainNavGraph's parameter
+                paddingValues = paddingValues,
                 onBack = { navController.popBackStack() },
                 onSave = { title, content, drawingData ->
                     noteViewModel.addNote(title = title, content = content, drawingData = drawingData)
                     navController.popBackStack()
-                }
+                },
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = this@composable,
+                noteId = "new_note"
             )
         }
 
@@ -139,7 +152,7 @@ fun MainNavGraph(
             }
             note?.let { existingNote ->
                 NoteEditorScreen(
-                    paddingValues  = paddingValues,   // ← same
+                    paddingValues  = paddingValues,
                     initialTitle   = existingNote.title,
                     initialContent = existingNote.content,
                     initialDrawingData = existingNote.drawingData,
@@ -147,7 +160,10 @@ fun MainNavGraph(
                     onSave = { title, content, drawingData ->
                         noteViewModel.updateNote(existingNote, title, content, drawingData)
                         navController.popBackStack()
-                    }
+                    },
+                    sharedTransitionScope = sharedTransitionScope,
+                    animatedVisibilityScope = this@composable,
+                    noteId = existingNote.id
                 )
             }
         }
@@ -160,7 +176,7 @@ fun MainNavGraph(
             popEnterTransition  = { targetTabIsToTheRight()?.let { tabEnterTransition(it) } ?: defaultEnterTransition },
             popExitTransition   = { targetTabIsToTheRight()?.let { tabExitTransition(it)  } ?: defaultExitTransition  }
         ) {
-            StatsScreen()
+            StatsScreen(paddingValues = paddingValues)
         }
 
         // ── SETTINGS ──────────────────────────────────────────────────────────
@@ -179,7 +195,7 @@ fun MainNavGraph(
                     syncManager        = syncManager
                 )
             )
-            SettingsScreen(viewModel = settingsViewModel)
+            SettingsScreen(viewModel = settingsViewModel, paddingValues = paddingValues)
         }
     }
 }

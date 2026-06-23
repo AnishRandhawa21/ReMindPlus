@@ -19,7 +19,7 @@ sealed class BottomNavItem(
 ) {
     object Reminders : BottomNavItem(
         route          = Routes.REMINDERS,
-        title          = "Reminders",
+        title          = "Tasks",
         icon           = Icons.Filled.CheckCircle,
         unselectedIcon = Icons.Outlined.CheckCircleOutline
     )
