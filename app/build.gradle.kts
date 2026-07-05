@@ -24,8 +24,8 @@ android {
         applicationId = "com.anish.remindplus"
         minSdk = 24
         targetSdk = 36
-        versionCode = 13
-        versionName = "1.1.3"
+        versionCode = 15
+        versionName = "1.1.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

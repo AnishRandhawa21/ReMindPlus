@@ -98,9 +98,9 @@ private fun TopSection() {
         modifier            = Modifier.padding(top = 80.dp),
     ) {
         Image(
-            painter = painterResource(R.drawable.ic_logo_app),
+            painter = painterResource(R.drawable.ic_logo_1),
             contentDescription = "App Logo",
-            modifier = Modifier.size(100.dp)
+            modifier = Modifier.size(110.dp)
         )//logo
 
         Spacer(Modifier.height(28.dp))
